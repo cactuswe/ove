@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chat med Claude 3 (Ove)</title>
+  <title>Chat med Ove (Claude 3)</title>
   <style>
     body { font-family: sans-serif; margin: 2rem; }
     textarea { width: 100%; max-width: 600px; }
@@ -14,6 +14,7 @@
       white-space: pre-wrap;
       word-wrap: break-word;
       max-width: 600px;
+      min-height: 2em;
     }
   </style>
 </head>
@@ -28,10 +29,17 @@
 
   <script type="module">
     document.addEventListener('DOMContentLoaded', () => {
-      const inputEl    = document.getElementById('messageInput');
-      const sendBtn    = document.getElementById('sendBtn');
-      const outputEl   = document.getElementById('replyOutput');
-      window.chatHistory = [];
+      const inputEl      = document.getElementById('messageInput');
+      const sendBtn      = document.getElementById('sendBtn');
+      const outputEl     = document.getElementById('replyOutput');
+
+      // Inaktiv tills användaren nämner 'ove'
+      let oveActive = false;
+      let chatHistory = [];
+
+      const activateRegex = /\bove\b/i;
+      // Stäng av när Ove själv säger "hejdå" eller "tröttnat"
+      const closeRegex    = /\b(?:hejdå|tröttnat)\b/i;
 
       async function sendMessage() {
         const text = inputEl.value.trim();
@@ -40,49 +48,39 @@
           return;
         }
 
-        // Endast skicka vidare om användaren nämner "ove" (case‑insensitive, ord‑gränser)
-        if (!/\bove\b/i.test(text)) {
-          outputEl.textContent = ''; 
-          return;
+        // Aktivera Ove om han nämns
+        if (!oveActive) {
+          if (!activateRegex.test(text)) {
+            outputEl.textContent = ''; // Ove förblir tyst
+            return;
+          }
+          oveActive = true;
         }
 
+        // Skicka meddelandet när Ove är aktiv
         outputEl.textContent = 'Skickar…';
-
         try {
           const res = await fetch('/api/anthropic', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              message: text,
-              history: window.chatHistory
-            })
+            body: JSON.stringify({ message: text, history: chatHistory })
           });
+          const raw  = await res.text();
+          const data = JSON.parse(raw);
 
-          const raw = await res.text();
-          let data;
-          try {
-            data = JSON.parse(raw);
-          } catch {
-            throw new Error(`Ogiltigt JSON från servern:\n${raw}`);
-          }
+          if (!res.ok) throw new Error(data.error || res.statusText);
 
-          if (!res.ok) {
-            let msg = `Fel ${res.status}: ${data.error || res.statusText}`;
-            if (data.details) msg += `\nDetaljer: ${data.details}`;
-            if (data.trace)   msg += `\nStack:\n${data.trace.join('\n')}`;
-            throw new Error(msg);
-          }
-          if (data.error) {
-            throw new Error(data.error + (data.details ? ` (${data.details})` : ''));
-          }
+          const reply = data.reply;
+          outputEl.textContent = reply;
+          chatHistory = data.history || [];
 
-          // Visa respons och uppdatera historiken
-          outputEl.textContent = data.reply;
-          window.chatHistory = data.history || [];
-        }
-        catch (err) {
+          // Om Ove avslutar med "hejdå" eller "tröttnat" → deaktivera
+          if (closeRegex.test(reply)) {
+            oveActive = false;
+          }
+        } catch (err) {
           console.error(err);
-          outputEl.textContent = err.message;
+          outputEl.textContent = 'Fel: ' + err.message;
         }
       }
 
