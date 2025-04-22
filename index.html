@@ -1,54 +1,84 @@
-<script type="module">
-document.addEventListener('DOMContentLoaded', () => {
-  const inputEl  = document.getElementById('messageInput');
-  const sendBtn  = document.getElementById('sendBtn');
-  const outputEl = document.getElementById('replyOutput');
-
-  async function sendMessage() {
-    const text = inputEl.value.trim();
-    if (!text) {
-      outputEl.textContent = 'Vänligen skriv något innan du skickar.';
-      return;
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat med Claude 3</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    textarea { width: 100%; max-width: 600px; }
+    button { margin-top: 0.5rem; padding: 0.5rem 1rem; }
+    pre { 
+      background: #f4f4f4; 
+      padding: 1rem; 
+      white-space: pre-wrap; 
+      word-wrap: break-word; 
+      max-width: 600px; 
     }
-    outputEl.textContent = 'Skickar…';
+  </style>
+</head>
+<body>
+  <h1>Chat med Claude 3</h1>
 
-    try {
-      const res = await fetch('/api/anthropic', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text })
-      });
+  <textarea id="messageInput" rows="4" placeholder="Skriv ditt meddelande här…"></textarea><br>
+  <button id="sendBtn">Skicka</button>
 
-      const raw = await res.text();
-      let data;
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        throw new Error(`Ogiltigt JSON från servern:\n${raw}`);
+  <h2>Svar:</h2>
+  <pre id="replyOutput"></pre>
+
+  <script type="module">
+    document.addEventListener('DOMContentLoaded', () => {
+      const inputEl  = document.getElementById('messageInput');
+      const sendBtn  = document.getElementById('sendBtn');
+      const outputEl = document.getElementById('replyOutput');
+
+      async function sendMessage() {
+        const text = inputEl.value.trim();
+        if (!text) {
+          outputEl.textContent = 'Vänligen skriv något innan du skickar.';
+          return;
+        }
+        outputEl.textContent = 'Skickar…';
+
+        try {
+          const res = await fetch('/api/anthropic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+          });
+
+          const raw = await res.text();
+          let data;
+          try {
+            data = JSON.parse(raw);
+          } catch {
+            throw new Error(`Ogiltigt JSON från servern:\n${raw}`);
+          }
+
+          if (!res.ok) {
+            let msg = `Fel ${res.status}: ${data.error || res.statusText}`;
+            if (data.details) msg += `\nDetaljer: ${data.details}`;
+            if (data.trace)   msg += `\nStack:\n${data.trace.join('\n')}`;
+            throw new Error(msg);
+          }
+
+          if (data.error) {
+            let msg = `Error: ${data.error}`;
+            if (data.details) msg += `\nDetaljer: ${data.details}`;
+            if (data.trace)   msg += `\nStack:\n${data.trace.join('\n')}`;
+            throw new Error(msg);
+          }
+
+          outputEl.textContent = data.reply;
+        }
+        catch (err) {
+          console.error(err);
+          outputEl.textContent = err.message;
+        }
       }
 
-      if (!res.ok) {
-        let msg = `Fel ${res.status}: ${data.error || res.statusText}`;
-        if (data.details) msg += `\nDetaljer: ${data.details}`;
-        if (data.trace)   msg += `\nStack:\n${data.trace.join('\n')}`;
-        throw new Error(msg);
-      }
-
-      if (data.error) {
-        let msg = `Error: ${data.error}`;
-        if (data.details) msg += `\nDetaljer: ${data.details}`;
-        if (data.trace)   msg += `\nStack:\n${data.trace.join('\n')}`;
-        throw new Error(msg);
-      }
-
-      outputEl.textContent = data.reply;
-    }
-    catch (err) {
-      console.error(err);
-      outputEl.textContent = err.message;
-    }
-  }
-
-  sendBtn.addEventListener('click', sendMessage);
-});
-</script>
+      sendBtn.addEventListener('click', sendMessage);
+    });
+  </script>
+</body>
+</html>
