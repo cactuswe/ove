@@ -13,28 +13,60 @@
   <p id="response"></p>
 
  <script>
-  async function sendMessage() {
-    const userInput = document.getElementById('userInput').value;
+  async function sendMessageToServer(userText) {
+  const endpoint = '/api/anthropic';  // Vercel-route
 
-    // Skicka användarens input till serverless-funktionen via Vercel
-    const response = await fetch('/api/anthropic', {
+  try {
+    const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ user_input: userInput })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: userText })
     });
 
-    // Kontrollera om svaret är korrekt
-    if (response.ok) {
-      const data = await response.json();
-      // Visa svaret från API:et
-      document.getElementById('response').innerText = data.response;
-    } else {
-      console.error('API request failed');
-      document.getElementById('response').innerText = 'Det uppstod ett problem med API-anropet.';
+    // Om icke-OK status, hämta text och kasta fel
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Server error ${response.status}: ${errorText}`);
     }
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      throw new Error('Invalid JSON received from server');
+    }
+
+    if (data.error) {
+      // API‑fel raporteras i JSON:en
+      throw new Error(data.error + (data.details ? ` (${data.details})` : ''));
+    }
+
+    // Allt OK – returnera AI‑svaret
+    return data.reply;
+
+  } catch (err) {
+    // Här kan du t.ex. visa ett meddelande i UI:t
+    console.error('sendMessageToServer failed:', err);
+    // Returnera ett användarvänligt felmeddelande eller kasta vidare
+    throw err;
   }
+}
+
+// Exempel på hur du använder funktionen:
+document.querySelector('#sendBtn').addEventListener('click', async () => {
+  const inputEl = document.querySelector('#messageInput');
+  const outputEl = document.querySelector('#replyOutput');
+  const userText = inputEl.value;
+
+  try {
+    outputEl.textContent = 'Skickar...';
+    const reply = await sendMessageToServer(userText);
+    outputEl.textContent = reply;
+  } catch (err) {
+    outputEl.textContent = `Fel: ${err.message}`;
+  }
+});
+
 </script>
 
 </body>
