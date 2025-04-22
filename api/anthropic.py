@@ -1,43 +1,57 @@
-import anthropic
+import json
 import os
-from dotenv import load_dotenv
-from flask import jsonify
+import anthropic
+from http import HTTPStatus
 
-# Ladda miljövariabler från en .env-fil (detta är för lokal utveckling)
-load_dotenv()
-
-# Hämta API-nyckeln från miljövariabeln
-api_key = os.getenv('ANTHROPIC_API_KEY')
-
-client = anthropic.Anthropic(api_key=api_key)
+client = anthropic.Client(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 def handler(request):
     try:
-        # Hämta användarens input från den inkommande begäran
-        user_input = request.json.get("user_input")
+        payload = request.json()
+    except Exception:
+        return {
+            "statusCode": HTTPStatus.BAD_REQUEST,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": "Invalid JSON in request body"})
+        }
 
-        if not user_input:
-            return jsonify({"error": "No user input provided"}), 400
+    user_input = payload.get("message")
+    if not user_input:
+        return {
+            "statusCode": HTTPStatus.BAD_REQUEST,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": "Missing ‘message’ field"})
+        }
 
-        # Anropa API:et med användarens input
-        response = client.messages.create(
-            model="claude-3-haiku-20240307",
-            max_tokens=500,
-            temperature=0.9,
-            system="""Du är Ove. En MÄNNISKA!
-            Ove är en oengagerad, dryg med ungdomsspråk och felstavningar. 
-            Han svarar kort och kärnfullt, utan att ge för mycket information. 
-            Han är skitsmart och vet allt om allt, men ger bara svar när han måste, utan att förklara för mycket. 
-            Han använder slarviga stavningar och små bokstäver.
-            Ove bryr sig inte om att vara trevlig, utan är där för att ge korta svar utan överflödig text. 
-            Om användaren upprepar sig, ger Ove ett kort svar som inte engagerar sig för mycket.
-            Ove ska aldrig avsluta ett svar med punkt.""",
-            messages=[{"role": "user", "content": user_input}]
+    try:
+        # Skicka till Claude 3
+        response = client.completions.create(
+            model="claude-3",
+            prompt=f"Human: {user_input}\n\nAssistant:",
+            max_tokens_to_sample=300
         )
+        result = response.completion
+        # Säkerställ att vi returnerar JSON
+        return {
+            "statusCode": HTTPStatus.OK,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"reply": result})
+        }
 
-        # Returnera API-svaret till frontend
-        return jsonify({"response": response['choices'][0]['text']}), 200
+    except anthropic.ApiError as e:
+        # Fel från Anthropics API
+        body = {"error": "Anthropic API error", "details": str(e)}
+        return {
+            "statusCode": HTTPStatus.BAD_GATEWAY,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(body)
+        }
 
     except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+        # Ovärntat fel
+        body = {"error": "Internal server error", "details": str(e)}
+        return {
+            "statusCode": HTTPStatus.INTERNAL_SERVER_ERROR,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(body)
+        }
