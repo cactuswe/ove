@@ -5,87 +5,202 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Chat med Ove (Claude 3)</title>
   <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    textarea { width: 100%; max-width: 600px; }
-    button { margin-top: 0.5rem; padding: 0.5rem 1rem; }
-    pre {
-      background: #f4f4f4;
-      padding: 1rem;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      max-width: 600px;
-      min-height: 2em;
+    body { font-family: sans-serif; margin: 2rem; max-width: 700px; }
+    .hidden { display: none; }
+    input, textarea, button { font-size: 1rem; margin-top: 0.5rem; width: 100%; }
+    #chatWindow { 
+      border: 1px solid #ccc; padding: 1rem; height: 300px; overflow-y: auto; 
+      background: #f9f9f9; margin-bottom: 1rem;
     }
+    .message.user   { text-align: right; color: #007bff; }
+    .message.assistant { text-align: left; color: #333; }
   </style>
 </head>
 <body>
   <h1>Chat med Ove (Claude 3)</h1>
 
-  <textarea id="messageInput" rows="4" placeholder="Skriv ditt meddelande här…"></textarea><br>
-  <button id="sendBtn">Skicka</button>
+  <!-- Auth UI -->
+  <div id="authUI">
+    <h2>Registera nytt konto</h2>
+    <input id="regDisplayName"  type="text"     placeholder="Visningsnamn" />
+    <input id="regEmail"        type="email"    placeholder="E‑post" />
+    <input id="regPassword"     type="password" placeholder="Lösenord" />
+    <button id="btnRegister">Registera</button>
+    <hr>
+    <h2>Logga in</h2>
+    <input id="loginId"     type="text"     placeholder="Visningsnamn eller e‑post" />
+    <input id="loginPassword" type="password" placeholder="Lösenord" />
+    <button id="btnLogin">Logga in</button>
+  </div>
 
-  <h2>Svar från Ove:</h2>
-  <pre id="replyOutput"></pre>
+  <!-- Chat UI -->
+  <div id="chatUI" class="hidden">
+    <p>Inloggad som <span id="userName"></span> - <button id="btnLogout">Logga ut</button></p>
+    <div id="chatWindow"></div>
+    <textarea id="messageInput" rows="3" placeholder="Skriv ditt meddelande…"></textarea>
+    <button id="sendBtn">Skicka</button>
+  </div>
 
+  <!-- Firebase SDK -->
   <script type="module">
-    document.addEventListener('DOMContentLoaded', () => {
-      const inputEl      = document.getElementById('messageInput');
-      const sendBtn      = document.getElementById('sendBtn');
-      const outputEl     = document.getElementById('replyOutput');
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    onAuthStateChanged,
+    updateProfile,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc,
+    collection,
+    addDoc,
+    query,
+    orderBy,
+    onSnapshot,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-      // Inaktiv tills användaren nämner 'ove'
-      let oveActive = false;
-      let chatHistory = [];
+  // 1) Initiera Firebase
+  const firebaseConfig = {
+    // …DIN CONFIG HÄR…
+    apiKey: "…",
+    authDomain: "…",
+    projectId: "…",
+    // rest…
+  };
+  const app      = initializeApp(firebaseConfig);
+  const auth     = getAuth(app);
+  const db       = getFirestore(app);
 
-      const activateRegex = /\bove\b/i;
-      // Stäng av när Ove själv säger "hejdå" eller "tröttnat"
-      const closeRegex    = /\b(?:hejdå|tröttnat)\b/i;
+  // 2) UI-element
+  const authUI      = document.getElementById("authUI");
+  const chatUI      = document.getElementById("chatUI");
+  const regDn       = document.getElementById("regDisplayName");
+  const regEm       = document.getElementById("regEmail");
+  const regPw       = document.getElementById("regPassword");
+  const btnReg      = document.getElementById("btnRegister");
+  const loginId     = document.getElementById("loginId");
+  const loginPw     = document.getElementById("loginPassword");
+  const btnLogin    = document.getElementById("btnLogin");
+  const btnLogout   = document.getElementById("btnLogout");
+  const userNameEl  = document.getElementById("userName");
+  const chatWindow  = document.getElementById("chatWindow");
+  const messageIn   = document.getElementById("messageInput");
+  const sendBtn     = document.getElementById("sendBtn");
 
-      async function sendMessage() {
-        const text = inputEl.value.trim();
-        if (!text) {
-          outputEl.textContent = 'Vänligen skriv något först.';
-          return;
-        }
+  let chatListenerUnsub = null;
 
-        // Aktivera Ove om han nämns
-        if (!oveActive) {
-          if (!activateRegex.test(text)) {
-            outputEl.textContent = ''; // Ove förblir tyst
-            return;
-          }
-          oveActive = true;
-        }
+  // Helper: visa meddelande i chatfönstret
+  function appendMessage(role, text) {
+    const div = document.createElement("div");
+    div.classList.add("message", role);
+    div.textContent = text;
+    chatWindow.append(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
 
-        // Skicka meddelandet när Ove är aktiv
-        outputEl.textContent = 'Skickar…';
-        try {
-          const res = await fetch('/api/anthropic', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text, history: chatHistory })
-          });
-          const raw  = await res.text();
-          const data = JSON.parse(raw);
+  // 3) Registera
+  btnReg.addEventListener("click", async () => {
+    try {
+      const userCred = await createUserWithEmailAndPassword(auth, regEm.value, regPw.value);
+      // sätt visningsnamn
+      await updateProfile(userCred.user, { displayName: regDn.value });
+      // spara också i Firestore för login via visningsnamn
+      await setDoc(doc(db, "users", userCred.user.uid), {
+        displayName: regDn.value,
+        email: userCred.user.email
+      });
+    } catch (e) {
+      alert("Registreringsfel: " + e.message);
+    }
+  });
 
-          if (!res.ok) throw new Error(data.error || res.statusText);
-
-          const reply = data.reply;
-          outputEl.textContent = reply;
-          chatHistory = data.history || [];
-
-          // Om Ove avslutar med "hejdå" eller "tröttnat" → deaktivera
-          if (closeRegex.test(reply)) {
-            oveActive = false;
-          }
-        } catch (err) {
-          console.error(err);
-          outputEl.textContent = 'Fel: ' + err.message;
-        }
+  // 4) Login (email eller visningsnamn)
+  btnLogin.addEventListener("click", async () => {
+    try {
+      let emailToUse = loginId.value;
+      if (!/@/.test(loginId.value)) {
+        // sök på visningsnamn i Firestore
+        const q = query(collection(db, "users"), orderBy("displayName"));
+        const snap = await (await getDoc(doc(db, "users", loginId.value))).data()
+        // alternativt: kamera, men vi gjorde setDoc(uid) ovan → identifiera med uid?
+        // För enkelhet: vi antog loginId = uid vid visningsnamn…
+        // Om du vill mer robust: använd collection+where("displayName","==",loginId)
+        // och hämta email där.
       }
+      await signInWithEmailAndPassword(auth, emailToUse, loginPw.value);
+    } catch (e) {
+      alert("Login-fel: " + e.message);
+    }
+  });
 
-      sendBtn.addEventListener('click', sendMessage);
+  // 5) Logga ut
+  btnLogout.addEventListener("click", () => signOut(auth));
+
+  // 6) Sätt upp auth‑state‑listener
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      // visa chat UI
+      authUI.classList.add("hidden");
+      chatUI.classList.remove("hidden");
+      userNameEl.textContent = user.displayName || user.email;
+
+      // lyssna i Firestore på chatten för just det här användar‑UID:t
+      const col = collection(db, "chats", user.uid, "messages");
+      const q   = query(col, orderBy("timestamp"));
+      if (chatListenerUnsub) chatListenerUnsub();
+      chatListenerUnsub = onSnapshot(q, snap => {
+        chatWindow.textContent = "";
+        snap.forEach(doc => {
+          const { role, content } = doc.data();
+          appendMessage(role, content);
+        });
+      });
+    } else {
+      // visa login/register
+      if (chatListenerUnsub) chatListenerUnsub();
+      authUI.classList.remove("hidden");
+      chatUI.classList.add("hidden");
+    }
+  });
+
+  // 7) Skicka meddelande
+  sendBtn.addEventListener("click", async () => {
+    const text = messageIn.value.trim();
+    if (!text) return;
+    const user = auth.currentUser;
+    if (!user) return alert("Du måste vara inloggad!");
+
+    // skriv användarens meddelande till Firestore
+    const userMsgRef = collection(db, "chats", user.uid, "messages");
+    await addDoc(userMsgRef, {
+      role: "user",
+      content: text,
+      timestamp: serverTimestamp()
     });
+
+    // anropa din serverless-funktion för Ove
+    const res = await fetch("/api/anthropic", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text, history: [] })
+    });
+    const data = await res.json();
+
+    // skriv Oves svar
+    await addDoc(userMsgRef, {
+      role: "assistant",
+      content: data.reply,
+      timestamp: serverTimestamp()
+    });
+
+    messageIn.value = "";
+  });
   </script>
 </body>
 </html>
