@@ -7,6 +7,7 @@ from http.server import BaseHTTPRequestHandler
 class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
+        print("DEBUG KEY:", os.getenv("ANTHROPIC_API_KEY"))
         # Läs in body
         length = int(self.headers.get('Content-Length', 0))
         raw = self.rfile.read(length).decode('utf-8')
