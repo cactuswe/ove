@@ -3,48 +3,59 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chat med Claude 3</title>
+  <title>Chat med Claude 3 (Ove)</title>
   <style>
     body { font-family: sans-serif; margin: 2rem; }
     textarea { width: 100%; max-width: 600px; }
     button { margin-top: 0.5rem; padding: 0.5rem 1rem; }
-    pre { 
-      background: #f4f4f4; 
-      padding: 1rem; 
-      white-space: pre-wrap; 
-      word-wrap: break-word; 
-      max-width: 600px; 
+    pre {
+      background: #f4f4f4;
+      padding: 1rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-width: 600px;
     }
   </style>
 </head>
 <body>
-  <h1>Chat med Claude 3</h1>
+  <h1>Chat med Ove (Claude 3)</h1>
 
   <textarea id="messageInput" rows="4" placeholder="Skriv ditt meddelande här…"></textarea><br>
   <button id="sendBtn">Skicka</button>
 
-  <h2>Svar:</h2>
+  <h2>Svar från Ove:</h2>
   <pre id="replyOutput"></pre>
 
   <script type="module">
     document.addEventListener('DOMContentLoaded', () => {
-      const inputEl  = document.getElementById('messageInput');
-      const sendBtn  = document.getElementById('sendBtn');
-      const outputEl = document.getElementById('replyOutput');
+      const inputEl    = document.getElementById('messageInput');
+      const sendBtn    = document.getElementById('sendBtn');
+      const outputEl   = document.getElementById('replyOutput');
+      window.chatHistory = [];
 
       async function sendMessage() {
         const text = inputEl.value.trim();
         if (!text) {
-          outputEl.textContent = 'Vänligen skriv något innan du skickar.';
+          outputEl.textContent = 'Vänligen skriv något först.';
           return;
         }
+
+        // Endast skicka vidare om användaren nämner "ove" (case‑insensitive, ord‑gränser)
+        if (!/\bove\b/i.test(text)) {
+          outputEl.textContent = ''; 
+          return;
+        }
+
         outputEl.textContent = 'Skickar…';
 
         try {
           const res = await fetch('/api/anthropic', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text })
+            body: JSON.stringify({
+              message: text,
+              history: window.chatHistory
+            })
           });
 
           const raw = await res.text();
@@ -61,15 +72,13 @@
             if (data.trace)   msg += `\nStack:\n${data.trace.join('\n')}`;
             throw new Error(msg);
           }
-
           if (data.error) {
-            let msg = `Error: ${data.error}`;
-            if (data.details) msg += `\nDetaljer: ${data.details}`;
-            if (data.trace)   msg += `\nStack:\n${data.trace.join('\n')}`;
-            throw new Error(msg);
+            throw new Error(data.error + (data.details ? ` (${data.details})` : ''));
           }
 
+          // Visa respons och uppdatera historiken
           outputEl.textContent = data.reply;
+          window.chatHistory = data.history || [];
         }
         catch (err) {
           console.error(err);
