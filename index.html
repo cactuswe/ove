@@ -1,55 +1,73 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="sv">
 <head>
   <meta charset="UTF-8">
-  <title>AI‑chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat med Claude 3</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    textarea { width: 100%; max-width: 600px; }
+    button { margin-top: 0.5rem; padding: 0.5rem 1rem; }
+    pre { background: #f4f4f4; padding: 1rem; white-space: pre-wrap; word-wrap: break-word; }
+  </style>
 </head>
 <body>
-  <textarea id="messageInput"></textarea>
+  <h1>Chat med Claude 3</h1>
+
+  <textarea id="messageInput" rows="4" placeholder="Skriv ditt meddelande här…"></textarea><br>
   <button id="sendBtn">Skicka</button>
-  <div id="replyOutput"></div>
 
-  <!-- Lägg script sist -->
+  <h2>Svar:</h2>
+  <pre id="replyOutput"></pre>
+
   <script type="module">
-    import TTLStorage from './ttlStorage.js';         // om du behöver
-    import ShowOneChild from './ShowOneChild.js';     // om du använder den
-
-    // Initiera dina klasser/globalt
-    const app = new ShowOneChild(new TTLStorage());
     document.addEventListener('DOMContentLoaded', () => {
-      // 1) Bind chat‑knapp
-      const sendBtn = document.getElementById('sendBtn');
-      sendBtn?.addEventListener('click', async () => {
-        const input = document.getElementById('messageInput').value;
-        const output = document.getElementById('replyOutput');
+      const inputEl  = document.getElementById('messageInput');
+      const sendBtn  = document.getElementById('sendBtn');
+      const outputEl = document.getElementById('replyOutput');
+
+      async function sendMessage() {
+        const text = inputEl.value.trim();
+        if (!text) {
+          outputEl.textContent = 'Vänligen skriv något innan du skickar.';
+          return;
+        }
+        outputEl.textContent = 'Skickar…';
+
         try {
-          output.textContent = 'Skickar…';
-          const resp = await fetch('/api/anthropic', {
+          const res = await fetch('/api/anthropic', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: input })
+            body: JSON.stringify({ message: text })
           });
-          if (!resp.ok) throw new Error(await resp.text());
-          const data = await resp.json();
-          if (data.error) throw new Error(data.error);
-          output.textContent = data.reply;
-        } catch (e) {
-          output.textContent = `Fel: ${e.message}`;
+
+          // Läs alltid rå text för att kunna ge bättre felmeddelande om JSON-parse misslyckas
+          const raw = await res.text();
+          let data;
+          try {
+            data = JSON.parse(raw);
+          } catch {
+            throw new Error(`Ogiltigt JSON från servern: ${raw}`);
+          }
+
+          if (!res.ok) {
+            const errMsg = data.error || res.statusText;
+            throw new Error(`Serverfel ${res.status}: ${errMsg}`);
+          }
+          if (data.error) {
+            throw new Error(data.error + (data.details ? ` (${data.details})` : ''));
+          }
+
+          outputEl.textContent = data.reply;
+        } catch (err) {
+          console.error(err);
+          outputEl.textContent = 'Fel: ' + err.message;
         }
-      });
+      }
 
-      // 2) Rendera eventuellt annat UI
-      app.render();
+      sendBtn.addEventListener('click', sendMessage);
     });
-
-    // 3) WebSocket
-    let socket;
-    try {
-      socket = new WebSocket('ws://localhost:7000/');
-      socket.addEventListener('error', console.error);
-    } catch (e) {
-      console.warn('WebSocket ej tillgänglig:', e);
-    }
   </script>
 </body>
 </html>
