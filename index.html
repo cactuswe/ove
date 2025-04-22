@@ -1,73 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ove Chat</title>
+  <title>AI‑chat</title>
 </head>
 <body>
-  <h1>Ove Chat</h1>
-  <input type="text" id="userInput" placeholder="Skriv här...">
-  <button onclick="sendMessage()">Skicka</button>
+  <textarea id="messageInput"></textarea>
+  <button id="sendBtn">Skicka</button>
+  <div id="replyOutput"></div>
 
-  <p id="response"></p>
+  <!-- Lägg script sist -->
+  <script type="module">
+    import TTLStorage from './ttlStorage.js';         // om du behöver
+    import ShowOneChild from './ShowOneChild.js';     // om du använder den
 
- <script>
-  async function sendMessageToServer(userText) {
-  const endpoint = '/api/anthropic';  // Vercel-route
+    // Initiera dina klasser/globalt
+    const app = new ShowOneChild(new TTLStorage());
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1) Bind chat‑knapp
+      const sendBtn = document.getElementById('sendBtn');
+      sendBtn?.addEventListener('click', async () => {
+        const input = document.getElementById('messageInput').value;
+        const output = document.getElementById('replyOutput');
+        try {
+          output.textContent = 'Skickar…';
+          const resp = await fetch('/api/anthropic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: input })
+          });
+          if (!resp.ok) throw new Error(await resp.text());
+          const data = await resp.json();
+          if (data.error) throw new Error(data.error);
+          output.textContent = data.reply;
+        } catch (e) {
+          output.textContent = `Fel: ${e.message}`;
+        }
+      });
 
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: userText })
+      // 2) Rendera eventuellt annat UI
+      app.render();
     });
 
-    // Om icke-OK status, hämta text och kasta fel
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Server error ${response.status}: ${errorText}`);
-    }
-
-    let data;
+    // 3) WebSocket
+    let socket;
     try {
-      data = await response.json();
-    } catch (parseError) {
-      throw new Error('Invalid JSON received from server');
+      socket = new WebSocket('ws://localhost:7000/');
+      socket.addEventListener('error', console.error);
+    } catch (e) {
+      console.warn('WebSocket ej tillgänglig:', e);
     }
-
-    if (data.error) {
-      // API‑fel raporteras i JSON:en
-      throw new Error(data.error + (data.details ? ` (${data.details})` : ''));
-    }
-
-    // Allt OK – returnera AI‑svaret
-    return data.reply;
-
-  } catch (err) {
-    // Här kan du t.ex. visa ett meddelande i UI:t
-    console.error('sendMessageToServer failed:', err);
-    // Returnera ett användarvänligt felmeddelande eller kasta vidare
-    throw err;
-  }
-}
-
-// Exempel på hur du använder funktionen:
-document.querySelector('#sendBtn').addEventListener('click', async () => {
-  const inputEl = document.querySelector('#messageInput');
-  const outputEl = document.querySelector('#replyOutput');
-  const userText = inputEl.value;
-
-  try {
-    outputEl.textContent = 'Skickar...';
-    const reply = await sendMessageToServer(userText);
-    outputEl.textContent = reply;
-  } catch (err) {
-    outputEl.textContent = `Fel: ${err.message}`;
-  }
-});
-
-</script>
-
+  </script>
 </body>
 </html>
