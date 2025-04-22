@@ -1,81 +1,61 @@
 # api/anthropic.py
-import json
 import os
+import json
 import importlib
-from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler
 
-def handler(request):
-    # 0) Kontrollera att anthropic-SDK finns installerat
-    try:
-        anthropic = importlib.import_module("anthropic")
-    except ImportError:
-        return {
-            "statusCode": HTTPStatus.INTERNAL_SERVER_ERROR,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({
-                "error": "Server configuration error: anthropic SDK is not installed"
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        # 1) Läs in rå body
+        length = int(self.headers.get('Content-Length', 0))
+        raw_body = self.rfile.read(length).decode('utf-8')
+
+        # 2) Parsning av JSON
+        try:
+            payload = json.loads(raw_body)
+        except json.JSONDecodeError:
+            return self._respond(400, {"error": "Invalid JSON in request body"})
+
+        msg = payload.get("message")
+        if not msg:
+            return self._respond(400, {"error": "Missing 'message' field"})
+
+        # 3) Ladda SDK (catch ImportError)
+        try:
+            anthropic = importlib.import_module("anthropic")
+        except ImportError:
+            return self._respond(500, {
+                "error": "Server configuration error: anthropic SDK not installed"
             })
-        }
 
-    # 1) Kontrollera API-nyckeln
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        return {
-            "statusCode": HTTPStatus.INTERNAL_SERVER_ERROR,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({
-                "error": "Server configuration error: missing ANTROPIC_API_KEY"
+        # 4) Kontrollera att API-nyckel finns
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            return self._respond(500, {
+                "error": "Server configuration error: missing ANTHROPIC_API_KEY"
             })
-        }
 
-    client = anthropic.Client(api_key=api_key)
+        client = anthropic.Client(api_key=api_key)
 
-    # 2) Läs in och validera POST-body
-    try:
-        payload = request.json()
-    except Exception:
-        return {
-            "statusCode": HTTPStatus.BAD_REQUEST,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Invalid JSON in request body"})
-        }
+        # 5) Anropa Claude 3
+        try:
+            resp = client.completions.create(
+                model="claude-3",
+                prompt=f"Human: {msg}\n\nAssistant:",
+                max_tokens_to_sample=300
+            )
+            return self._respond(200, {"reply": resp.completion})
 
-    user_input = payload.get("message")
-    if not user_input:
-        return {
-            "statusCode": HTTPStatus.BAD_REQUEST,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Missing 'message' field"})
-        }
+        except getattr(anthropic, "ApiError", Exception) as e:
+            # ApiError → 502, övriga → 500
+            code = 502 if hasattr(anthropic, "ApiError") and isinstance(e, anthropic.ApiError) else 500
+            err_type = "Anthropic API error" if code == 502 else "Internal server error"
+            return self._respond(code, {"error": err_type, "details": str(e)})
 
-    # 3) Anropa Anthropics API
-    try:
-        resp = client.completions.create(
-            model="claude-3",
-            prompt=f"Human: {user_input}\n\nAssistant:",
-            max_tokens_to_sample=300
-        )
-        return {
-            "statusCode": HTTPStatus.OK,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"reply": resp.completion})
-        }
-
-    except Exception as e_raw:
-        # Dela upp ApiError vs. andra fel
-        ApiError = getattr(anthropic, "ApiError", None)
-        if ApiError and isinstance(e_raw, ApiError):
-            status = HTTPStatus.BAD_GATEWAY
-            err_type = "Anthropic API error"
-        else:
-            status = HTTPStatus.INTERNAL_SERVER_ERROR
-            err_type = "Internal server error"
-
-        return {
-            "statusCode": status,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({
-                "error": err_type,
-                "details": str(e_raw)
-            })
-        }
+    def _respond(self, status_code, body_obj):
+        body = json.dumps(body_obj).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
