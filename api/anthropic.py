@@ -5,39 +5,36 @@ import traceback
 from http.server import BaseHTTPRequestHandler
 
 class handler(BaseHTTPRequestHandler):
+
     def do_POST(self):
-        # 1) Läs Content-Length och rå body
-        length_str = self.headers.get('Content-Length')
-        try:
-            length = int(length_str)
-        except (TypeError, ValueError):
-            length = 0
+        # Läs in body
+        length = int(self.headers.get('Content-Length', 0))
         raw = self.rfile.read(length).decode('utf-8')
 
-        # 2) Försök parse:a JSON
+        # Parsning
         try:
             payload = json.loads(raw)
         except json.JSONDecodeError:
-            return self._respond(400, {"error": "Invalid JSON in request body"})
+            return self._respond(400, {"error": "Invalid JSON in request body", "raw": raw})
 
         msg = payload.get("message")
         if not msg:
             return self._respond(400, {"error": "Missing 'message' field"})
 
-        # 3) Ladda in SDK:t
+        # Importera SDK
         try:
             import anthropic
         except ImportError:
             return self._respond(500, {"error": "Server config error: anthropic SDK not installed"})
 
-        # 4) Kontrollera API-nyckeln
+        # Kolla API-nyckel
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             return self._respond(500, {"error": "Server config error: missing ANTHROPIC_API_KEY"})
 
         client = anthropic.Client(api_key=api_key)
 
-        # 5) Anropa Claude 3
+        # Anropa Claude
         try:
             resp = client.completions.create(
                 model="claude-3",
@@ -46,13 +43,25 @@ class handler(BaseHTTPRequestHandler):
             )
             return self._respond(200, {"reply": resp.completion})
 
-        except Exception as e:
-            # Logga full trace till Vercel-loggarna
+        except getattr(anthropic, "ApiError", Exception) as e:
+            # ApiError från Anthropics → 502
+            tb = traceback.format_exc().splitlines()[-5:]
             traceback.print_exc()
-            is_api_error = hasattr(anthropic, "ApiError") and isinstance(e, anthropic.ApiError)
-            status = 502 if is_api_error else 500
-            err_type = "Anthropic API error" if is_api_error else "Internal server error"
-            return self._respond(status, {"error": err_type, "details": str(e)})
+            return self._respond(502, {
+                "error": "Anthropic API error",
+                "details": str(e),
+                "trace": tb
+            })
+
+        except Exception as e:
+            # Övriga fel → 500
+            tb = traceback.format_exc().splitlines()[-5:]
+            traceback.print_exc()
+            return self._respond(500, {
+                "error": "Internal server error",
+                "details": str(e),
+                "trace": tb
+            })
 
     def _respond(self, status_code, body_obj):
         body_bytes = json.dumps(body_obj).encode('utf-8')
@@ -61,3 +70,4 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body_bytes)))
         self.end_headers()
         self.wfile.write(body_bytes)
+
