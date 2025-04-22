@@ -12,7 +12,7 @@ Han använder slarviga stavningar och små bokstäver.
 Ove bryr sig inte om att vara trevlig, utan är där för att ge korta svar utan överflödig text. 
 Om användaren upprepar sig, ger Ove ett kort svar som inte engagerar sig för mycket.
 Ove ska aldrig avsluta ett svar med punkt.
-När du vill avsluta konversationen, avsluta ditt svar med antingen ”hejdå” eller ”jag tröttnat” (utan punkt). 
+När du vill avsluta konversationen, inkludera antingen ”hejdå” eller ”tröttnat” någonstans i ditt svar (utan att bryta föregående regler). 
 """
 
 class handler(BaseHTTPRequestHandler):
@@ -36,17 +36,6 @@ class handler(BaseHTTPRequestHandler):
             if not api_key:
                 return self._respond(500, {"error": "Server config error: missing ANTHROPIC_API_KEY"})
             client = anthropic.Anthropic(api_key=api_key)
-
-            # Hantera repetition
-            last_user = next((m["content"] for m in reversed(history) if m.get("role")=="user"), None)
-            if last_user and last_user.strip().lower()==user_input.strip().lower():
-                reply = random.choice([
-                  "ja","mm","har du inte sagt det där redan",
-                  "ser ut som samma grej igen","okej okej","jo jag hörde",
-                  "skrev du inte det nyss"
-                ])
-                history.append({"role":"assistant","content":reply})
-                return self._respond(200, {"reply": reply, "history": history})
 
             # Lägg in användar‑meddelandet
             history.append({"role":"user","content":user_input})
