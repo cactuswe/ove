@@ -1,14 +1,36 @@
 # api/anthropic.py
 import json
 import os
-import anthropic
+import importlib
 from http import HTTPStatus
 
-# Initiera klienten med din API-nyckel
-client = anthropic.Client(api_key=os.getenv("ANTHROPIC_API_KEY"))
-
 def handler(request):
-    # 1) Försök läsa JSON från inkommande request
+    # 0) Kontrollera att anthropic-SDK finns installerat
+    try:
+        anthropic = importlib.import_module("anthropic")
+    except ImportError:
+        return {
+            "statusCode": HTTPStatus.INTERNAL_SERVER_ERROR,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({
+                "error": "Server configuration error: anthropic SDK is not installed"
+            })
+        }
+
+    # 1) Kontrollera API-nyckeln
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return {
+            "statusCode": HTTPStatus.INTERNAL_SERVER_ERROR,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({
+                "error": "Server configuration error: missing ANTROPIC_API_KEY"
+            })
+        }
+
+    client = anthropic.Client(api_key=api_key)
+
+    # 2) Läs in och validera POST-body
     try:
         payload = request.json()
     except Exception:
@@ -18,7 +40,6 @@ def handler(request):
             "body": json.dumps({"error": "Invalid JSON in request body"})
         }
 
-    # 2) Kontrollera att 'message' finns
     user_input = payload.get("message")
     if not user_input:
         return {
@@ -34,32 +55,27 @@ def handler(request):
             prompt=f"Human: {user_input}\n\nAssistant:",
             max_tokens_to_sample=300
         )
-        result = resp.completion
-
         return {
             "statusCode": HTTPStatus.OK,
             "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"reply": result})
+            "body": json.dumps({"reply": resp.completion})
         }
 
-    except anthropic.ApiError as e:
-        # Fel från Claude/Anthropic
-        return {
-            "statusCode": HTTPStatus.BAD_GATEWAY,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({
-                "error": "Anthropic API error",
-                "details": str(e)
-            })
-        }
+    except Exception as e_raw:
+        # Dela upp ApiError vs. andra fel
+        ApiError = getattr(anthropic, "ApiError", None)
+        if ApiError and isinstance(e_raw, ApiError):
+            status = HTTPStatus.BAD_GATEWAY
+            err_type = "Anthropic API error"
+        else:
+            status = HTTPStatus.INTERNAL_SERVER_ERROR
+            err_type = "Internal server error"
 
-    except Exception as e:
-        # Oväntrat serverfel
         return {
-            "statusCode": HTTPStatus.INTERNAL_SERVER_ERROR,
+            "statusCode": status,
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps({
-                "error": "Internal server error",
-                "details": str(e)
+                "error": err_type,
+                "details": str(e_raw)
             })
         }
