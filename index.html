@@ -12,24 +12,30 @@
 
   <p id="response"></p>
 
-  <script>
-    async function sendMessage() {
-      const userInput = document.getElementById('userInput').value;
+ <script>
+  async function sendMessage() {
+    const userInput = document.getElementById('userInput').value;
 
-      // Skicka användarens input till serverless-funktionen via Vercel
-      const response = await fetch('/api/anthropic', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_input: userInput })
-      });
+    // Skicka användarens input till serverless-funktionen via Vercel
+    const response = await fetch('/api/anthropic', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ user_input: userInput })
+    });
 
+    // Kontrollera om svaret är korrekt
+    if (response.ok) {
       const data = await response.json();
-
       // Visa svaret från API:et
-      document.getElementById('response').innerText = data.body;
+      document.getElementById('response').innerText = data.response;
+    } else {
+      console.error('API request failed');
+      document.getElementById('response').innerText = 'Det uppstod ett problem med API-anropet.';
     }
-  </script>
+  }
+</script>
+
 </body>
 </html>
