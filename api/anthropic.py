@@ -1,14 +1,8 @@
-# api/anthropic.py
 import os
 import json
-import base64
-import random
 import traceback
 from http.server import BaseHTTPRequestHandler
 
-api_key = os.getenv("ANTHROPIC_API_KEY")
-
-# ——— System‑prompt och konfig ———
 system_prompt = """
 Du är Ove. En MÄNNISKA!
 Ove är en oengagerad, dryg med ungdomsspråk och felstavningar 
@@ -18,118 +12,78 @@ Han använder slarviga stavningar och små bokstäver
 Ove bryr sig inte om att vara trevlig utan ger endast korta svar utan överflöd 
 Om användaren upprepar sig, ger Ove ett kort svar som inte engagerar sig för mycket 
 Ove ska aldrig avsluta ett svar med punkt
-""".strip()
-
-MAX_HISTORY = 6
-
-
-def summarize_conversation(client, history):
-    """Summera en lång konversation till några rader."""
-    text = ""
-    for msg in history:
-        text += f"{msg['role'].capitalize()}: {msg['content']}\n"
-    summary_resp = client.messages.create(
-        model="claude-3-haiku-20240307",
-        max_tokens=300,
-        temperature=0.5,
-        system="Summera kortfattat den här konversationen:",
-        messages=[{"role": "user", "content": text}]
-    )
-    # Vi förväntar oss en lista i .content
-    return summary_resp.content[0].text
-
-
-def generate_repeating_response():
-    """Kort, torr respons när användaren upprepar sig."""
-    choices = [
-        "ja",
-        "mm",
-        "har du inte sagt det där redan",
-        "ser ut som samma grej igen",
-        "okej okej",
-        "jo jag hörde",
-        "skrev du inte det nyss"
-    ]
-    return random.choice(choices)
-
+"""
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
-            # — Läs och parsa inkommande JSON —
+            # Läs in rå JSON‑body
             length = int(self.headers.get("Content-Length", 0))
-            raw = self.rfile.read(length).decode("utf-8")
-            try:
-                payload = json.loads(raw)
-            except json.JSONDecodeError:
-                return self._respond(400, {"error": "Invalid JSON in request body", "raw": raw})
-
+            raw    = self.rfile.read(length).decode("utf-8")
+            payload = json.loads(raw)
             user_input = payload.get("message")
-            history = payload.get("history", []) or []
+            history    = payload.get("history", [])
 
+            if not isinstance(user_input, str) or not user_input.strip():
+                return self._respond(400, {"error": "Missing or invalid 'message' field"})
             if not isinstance(history, list):
                 return self._respond(400, {"error": "'history' must be a list"})
 
-            if not user_input or not isinstance(user_input, str):
-                return self._respond(400, {"error": "Missing or invalid 'message' field"})
-
-            # — Initiera Anthropics‑klient med dekrypterad nyckel —
-            try:
-                import anthropic
-            except ImportError:
-                return self._respond(500, {"error": "anthropic SDK not installed"})
-            api_key = get_api_key()
+            # Initiera Anthropics‑klient med Vercel‑env‑var
+            import anthropic
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+            if not api_key:
+                return self._respond(500, {"error": "Server config error: missing ANTHROPIC_API_KEY"})
             client = anthropic.Anthropic(api_key=api_key)
 
-            # — Kolla om användaren upprepar sig —
-            # Hitta sista användar‑meddelandet i historiken
-            last_user = None
-            for msg in reversed(history):
-                if msg.get("role") == "user":
-                    last_user = msg.get("content")
-                    break
-
-            if last_user and last_user.strip().lower() == user_input.strip().lower():
-                reply = generate_repeating_response()
-                history.append({"role": "assistant", "content": reply})
+            # Hantera repetition
+            last_user = next((m["content"] for m in reversed(history) if m.get("role")=="user"), None)
+            if last_user and last_user.strip().lower()==user_input.strip().lower():
+                reply = random.choice([
+                  "ja","mm","har du inte sagt det där redan",
+                  "ser ut som samma grej igen","okej okej","jo jag hörde",
+                  "skrev du inte det nyss"
+                ])
+                history.append({"role":"assistant","content":reply})
                 return self._respond(200, {"reply": reply, "history": history})
 
-            # — Lägg till användarens nya meddelande i historiken —
-            history.append({"role": "user", "content": user_input})
+            # Lägg in användar‑meddelandet
+            history.append({"role":"user","content":user_input})
 
-            # — Sammanfatta om historiken blivit för lång —
-            if len(history) > MAX_HISTORY:
-                old = history[:-MAX_HISTORY]
-                summary = summarize_conversation(client, old)
-                # Börja om historiken med en kort sammanfattning
-                history = (
-                    [{"role": "user", "content": f"Sammanfattning av tidigare konversation: {summary}"}]
-                    + history[-MAX_HISTORY:]
-                )
+            # Sammanfatta om >6 meddelanden
+            if len(history)>6:
+                # Sammanfatta de äldsta
+                text = "\n".join(f"{m['role'].capitalize()}: {m['content']}" for m in history[:-6])
+                summary = client.messages.create(
+                    model="claude-3-haiku-20240307",
+                    max_tokens=300,
+                    temperature=0.5,
+                    system="Summera kortfattat den här konversationen:",
+                    messages=[{"role":"user","content": text}]
+                ).content[0].text
+                history = [{"role":"user","content":f"Sammanfattning: {summary}"}] + history[-6:]
 
-            # — Skicka chattförfrågan till Claude 3 —
+            # Slutgiltigt anrop
             resp = client.messages.create(
                 model="claude-3-haiku-20240307",
                 max_tokens=500,
                 temperature=0.9,
-                system=system_prompt,
+                system=system_prompt,   # definiera system_prompt högst upp i filen
                 messages=history
             )
-            # Hämta tillbaka svaret
             answer = resp.content[0].text
-            history.append({"role": "assistant", "content": answer})
+            history.append({"role":"assistant","content":answer})
 
             return self._respond(200, {"reply": answer, "history": history})
 
         except Exception as e:
-            # Logga full stacktrace i Vercel‑loggarna
             traceback.print_exc()
-            return self._respond(500, {"error": "Internal server error", "details": str(e)})
+            return self._respond(500, {"error":"Internal server error","details":str(e)})
 
-    def _respond(self, status_code, body_obj):
-        body = json.dumps(body_obj, ensure_ascii=False).encode("utf-8")
-        self.send_response(status_code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
+    def _respond(self, status, body):
+        data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type","application/json; charset=utf-8")
+        self.send_header("Content-Length",str(len(data)))
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.write(data)
