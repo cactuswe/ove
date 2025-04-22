@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ove Chat</title>
+</head>
+<body>
+  <h1>Ove Chat</h1>
+  <input type="text" id="userInput" placeholder="Skriv här...">
+  <button onclick="sendMessage()">Skicka</button>
+
+  <p id="response"></p>
+
+  <script>
+    async function sendMessage() {
+      const userInput = document.getElementById('userInput').value;
+
+      // Skicka användarens input till serverless-funktionen via Vercel
+      const response = await fetch('/api/anthropic', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_input: userInput })
+      });
+
+      const data = await response.json();
+
+      // Visa svaret från API:et
+      document.getElementById('response').innerText = data.body;
+    }
+  </script>
+</body>
+</html>
