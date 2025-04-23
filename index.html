@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chat med Ove</title>
+  <title>Chat med Ove (Claude 3)</title>
   <style>
     body { font-family: sans-serif; margin: 2rem; max-width: 700px; }
     .hidden { display: none; }
@@ -47,7 +47,6 @@
       </button>
     </p>
     <div id="chatWindow"></div>
-    <!-- Ove-status -->
     <div style="margin-bottom:0.5rem;">
       <strong>Ove:</strong>
       <span id="oveIndicator" class="indicator offline">Offline</span>
@@ -112,9 +111,9 @@
 
     let chatUnsub     = null;
     let presenceUnsub = null;
+    let presenceRef   = null;
     let isOveActive   = false;
 
-    // Visa meddelande i chatfönstret
     function appendMessage(role, text) {
       const div = document.createElement("div");
       div.classList.add("message", role);
@@ -123,7 +122,7 @@
       chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
-    // Registrera nytt konto
+    // --- Registrera nytt konto ---
     btnReg.addEventListener("click", async () => {
       try {
         const cred = await createUserWithEmailAndPassword(auth, regEm.value, regPw.value);
@@ -137,19 +136,15 @@
       }
     });
 
-    // Logga in (e-post eller visningsnamn)
+    // --- Logga in (e-post eller visningsnamn) ---
     btnLogin.addEventListener("click", async () => {
       try {
         let email = loginId.value.trim();
         if (email && !/@/.test(email)) {
-          // Hitta e-post via visningsnamn
-          const q    = query(
-            collection(db, "users"),
-            where("displayName", "==", email)
-          );
-          const snap = await (await q.get()).docs;
-          if (!snap.length) throw new Error("Ingen användare med det visningsnamnet");
-          email = snap[0].data().email;
+          const q    = query(collection(db, "users"), where("displayName", "==", email));
+          const snap = await (await getDoc(q)).data();
+          if (!snap) throw new Error("Ingen användare med det visningsnamnet");
+          email = snap.email;
         }
         await signInWithEmailAndPassword(auth, email, loginPw.value);
       } catch (e) {
@@ -157,14 +152,14 @@
       }
     });
 
-    // Logga ut
+    // --- Logga ut ---
     btnLogout.addEventListener("click", () => signOut(auth));
 
-    // När auth-status ändras
+    // --- Auth-status ändras ---
     onAuthStateChanged(auth, user => {
       if (user) {
-        // Prenumerera på global närvaro för Ove
-        const presenceRef = doc(db, "presence", "ove");
+        // spara global presence-ref för Ove
+        presenceRef = doc(db, "presence", "ove");
         if (presenceUnsub) presenceUnsub();
         presenceUnsub = onSnapshot(presenceRef, snap => {
           isOveActive = snap.exists() && snap.data().active;
@@ -173,25 +168,19 @@
           oveIndicator.classList.toggle("offline", !isOveActive);
         });
 
-        // Visa chat-gränssnittet
         authUI.classList.add("hidden");
         chatUI.classList.remove("hidden");
         userNameEl.textContent = user.displayName || user.email;
 
-        // Prenumerera på globala meddelanden
-        const msgsCol = collection(db, "messages");
-        const msgsQ   = query(msgsCol, orderBy("timestamp"));
+        // prenumerera på alla meddelanden
+        const msgsQ = query(collection(db, "messages"), orderBy("timestamp"));
         if (chatUnsub) chatUnsub();
         chatUnsub = onSnapshot(msgsQ, snap => {
           chatWindow.textContent = "";
-          snap.forEach(d => {
-            const { role, content } = d.data();
-            appendMessage(role, content);
-          });
+          snap.forEach(d => appendMessage(d.data().role, d.data().content));
         });
 
       } else {
-        // Gå tillbaka till login
         if (chatUnsub)     chatUnsub();
         if (presenceUnsub) presenceUnsub();
         authUI.classList.remove("hidden");
@@ -199,23 +188,27 @@
       }
     });
 
-    // Skicka meddelande
+    // --- Skicka meddelande ---
     sendBtn.addEventListener("click", async () => {
       const text = messageIn.value.trim();
       if (!text) return;
-      const usr = auth.currentUser;
-      if (!usr) return alert("Du måste vara inloggad!");
+      const user = auth.currentUser;
+      if (!user) return alert("Du måste vara inloggad!");
 
-      // Spara användarens meddelande i global samling
-      const msgsCol = collection(db, "messages");
-      await addDoc(msgsCol, {
-        role:    "user",
-        content: text,
-        user:    usr.uid,
+      // Om meddelandet innehåller "ove" → sätt Ove online
+      if (text.toLowerCase().includes("ove") && presenceRef) {
+        await setDoc(presenceRef, { active: true, timestamp: serverTimestamp() });
+      }
+
+      // spara användarens meddelande
+      await addDoc(collection(db, "messages"), {
+        role:      "user",
+        content:   text,
+        userId:    user.uid,
         timestamp: serverTimestamp()
       });
 
-      // Om Ove är online → anropa serverless-funktion och spara hans svar
+      // om Ove är online → anropa API och spara svaret
       if (isOveActive) {
         const res  = await fetch("/api/anthropic", {
           method: "POST",
@@ -223,15 +216,15 @@
           body: JSON.stringify({ message: text, history: [] })
         });
         const data = await res.json();
-        await addDoc(msgsCol, {
-          role:    "assistant",
-          content: data.reply,
+        await addDoc(collection(db, "messages"), {
+          role:      "assistant",
+          content:   data.reply,
           timestamp: serverTimestamp()
         });
-        // Om Ove säger hejdå/tröttnat → sätt offline
+        // sätt offline om Ove säger hejdå/tröttnat
         const r = data.reply.toLowerCase();
-        if (r.includes("hejdå") || r.includes("tröttnat")) {
-          await setDoc(doc(db,"presence","ove"), { active: false, timestamp: serverTimestamp() });
+        if ( (r.includes("hejdå") || r.includes("tröttnat")) && presenceRef ) {
+          await setDoc(presenceRef, { active: false, timestamp: serverTimestamp() });
         }
       }
 
@@ -240,3 +233,4 @@
   </script>
 </body>
 </html>
+
