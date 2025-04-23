@@ -78,6 +78,15 @@ class handler(BaseHTTPRequestHandler):
         except Exception as err:
             traceback.print_exc()
             self._send(500, {"error": str(err)})
+	try:
+	    resp.raise_for_status()
+	except requests.exceptions.HTTPError:
+	    try:
+	        err_json = resp.json()
+	    except:
+	        err_json = {"error": resp.text}
+	    self._send(resp.status_code, err_json)
+	    return
 
     # Svara 405 på allt utom POST
     def do_GET(self):
