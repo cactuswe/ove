@@ -101,10 +101,18 @@ main {
 
 /* ===== TYPING-BUBBLE ===== */
 .typing-bubble {
-  display:flex; align-items:center; padding:0.5rem 0.75rem;
-  margin-bottom:0.75rem; max-width:60%;
-  border-radius:12px 12px 12px 0;
-  background:var(--surface); border:1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  max-width: 60%;
+  border-radius: 12px 12px 12px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.typing-bubble.hidden {
+  display: none !important;
 }
 .typing {
   display:flex; gap:4px; margin-left:auto;
