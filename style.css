@@ -5,7 +5,7 @@
   --text-alt: #555555;
   --border:   #dddddd;
   --muted:    #777777;
-  --online:   #444444;
+  --online:   #4caf50;
   --offline:  #bbbbbb;
 }
 
@@ -61,9 +61,7 @@ main {
   flex: 1;
   overflow-y: auto;
 }
-.tab-content.active {
-  display: block;
-}
+.tab-content.active { display: block; }
 .form-group {
   margin-bottom: 1rem;
 }
@@ -99,9 +97,7 @@ main {
   cursor: pointer;
   transition: background .2s;
 }
-.btn:hover {
-  background: var(--text);
-}
+.btn:hover { background: var(--text); }
 .btn.logout {
   background: var(--offline);
 }
@@ -110,11 +106,7 @@ main {
 }
 
 /* ===== CHAT ===== */
-#chatUI {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
+#chatUI { display: flex; flex-direction: column; height: 100%; }
 .hidden { display: none !important; }
 
 #chat-header {
@@ -154,6 +146,7 @@ main {
   border: 1px solid var(--border);
 }
 
+/* ===== STATUS BAR ===== */
 #statusBar {
   padding: 0.5rem 1rem;
   display: flex;
@@ -163,29 +156,31 @@ main {
   border-bottom: 1px solid var(--border);
   color: var(--text-alt);
 }
-.circle {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--online);
-  transition: background .2s, opacity .2s;
-}
-.circle.hidden {
-  opacity: 0;
-}
-.circle:not(.hidden) {
-  opacity: 1;
-}
 .indicator {
   font-size: 0.85rem;
-  color: var(--text-alt);
-  display: flex;
-  align-items: center;
-  gap: 0.25em;
 }
 .indicator.offline { color: var(--offline); }
 .indicator.online  { color: var(--online); }
 
+/* ===== PEEK CIRCLE ===== */
+#input-wrapper {
+  position: relative;
+}
+.peek {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--online);
+  bottom: calc(100% - 16px);
+  left: 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.peek.hidden {
+  display: none;
+}
+
+/* ===== INPUT AREA ===== */
 #input-area {
   display: flex;
   padding: 0.75rem 1rem;
@@ -206,6 +201,26 @@ main {
 #sendBtn {
   flex-shrink: 0;
   width: 48px;
+}
+
+/* ===== TYPING ANIMATION ===== */
+.typing {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.typing span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: blink 1s infinite;
+}
+.typing span:nth-child(2) { animation-delay: .2s; }
+.typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0; }
+  40% { opacity: 1; }
 }
 
 /* ===== Responsivt ===== */
