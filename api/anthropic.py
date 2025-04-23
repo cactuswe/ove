@@ -54,7 +54,7 @@ class handler(BaseHTTPRequestHandler):
                     "x-api-key": os.getenv("ANTHROPIC_API_KEY", "")
                 },
                 json={
-                    "model": "claude-3-haiku-20240307",
+                    "model": "claude-3-haiku-20230601",
                     "max_tokens": 300,
                     "messages": [{"role": "user", "content": prompt}]
                 },
