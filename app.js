@@ -57,6 +57,7 @@ const messageIn       = document.getElementById("messageInput");
 const sendBtn         = document.getElementById("sendBtn");
 const ovePeek         = document.getElementById("ovePeek");
 const typingIndicator = document.getElementById("typingIndicator");
+const statusBarEl     = document.getElementById("statusBar");
 
 let chatUnsub, presenceUnsub, presenceRef;
 let isOveActive = false;
@@ -156,7 +157,8 @@ onAuthStateChanged(auth, user => {
       // peek-cirkeln
       ovePeek.classList.toggle("hidden", !d.active);
       // typing-animation
-      typingIndicator.classList.toggle("hidden", !d.typing);
+      // typingIndicator.classList.toggle("hidden", !d.typing);
+        statusBarEl.classList.toggle("hidden", !d.typing);
     });
 
     authUI.classList.add("hidden");
