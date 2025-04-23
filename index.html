@@ -24,30 +24,12 @@
 
       <form id="loginForm" class="tab-content active">
         <div class="form-group">
-          <label for="loginId">
-            <i class="material-icons">account_circle</i>
-            Visningsnamn eller e-post
-          </label>
-          <input
-            id="loginId"
-            name="loginId"
-            type="text"
-            autocomplete="username"
-            required
-          />
+          <label for="loginId"><i class="material-icons">account_circle</i> Visningsnamn eller e-post</label>
+          <input id="loginId" name="loginId" type="text" required />
         </div>
         <div class="form-group">
-          <label for="loginPassword">
-            <i class="material-icons">lock</i>
-            Lösenord
-          </label>
-          <input
-            id="loginPassword"
-            name="loginPassword"
-            type="password"
-            autocomplete="current-password"
-            required
-          />
+          <label for="loginPassword"><i class="material-icons">lock</i> Lösenord</label>
+          <input id="loginPassword" name="loginPassword" type="password" required />
         </div>
         <button type="submit" id="btnLogin" class="btn">
           <i class="material-icons">arrow_forward</i> Logga in
@@ -56,43 +38,16 @@
 
       <form id="registerForm" class="tab-content">
         <div class="form-group">
-          <label for="regDisplayName">
-            <i class="material-icons">badge</i>
-            Visningsnamn
-          </label>
-          <input
-            id="regDisplayName"
-            name="regDisplayName"
-            type="text"
-            autocomplete="name"
-            required
-          />
+          <label for="regDisplayName"><i class="material-icons">badge</i> Visningsnamn</label>
+          <input id="regDisplayName" name="regDisplayName" type="text" required />
         </div>
         <div class="form-group">
-          <label for="regEmail">
-            <i class="material-icons">email</i>
-            E-post
-          </label>
-          <input
-            id="regEmail"
-            name="regEmail"
-            type="email"
-            autocomplete="email"
-            required
-          />
+          <label for="regEmail"><i class="material-icons">email</i> E-post</label>
+          <input id="regEmail" name="regEmail" type="email" required />
         </div>
         <div class="form-group">
-          <label for="regPassword">
-            <i class="material-icons">lock</i>
-            Lösenord
-          </label>
-          <input
-            id="regPassword"
-            name="regPassword"
-            type="password"
-            autocomplete="new-password"
-            required
-          />
+          <label for="regPassword"><i class="material-icons">lock</i> Lösenord</label>
+          <input id="regPassword" name="regPassword" type="password" required />
         </div>
         <button type="submit" id="btnRegister" class="btn">
           <i class="material-icons">person_add</i> Registrera
@@ -103,39 +58,26 @@
     <!-- CHAT -->
     <div id="chatUI" class="hidden">
       <div id="chat-header">
-        <div>
-          <i class="material-icons">person</i>
-          Inloggad som <strong><span id="userName"></span></strong>
-        </div>
-        <button id="btnLogout" class="btn logout">
-          <i class="material-icons">logout</i>
-        </button>
+        <div><i class="material-icons">person</i> Inloggad som <strong><span id="userName"></span></strong></div>
+        <button id="btnLogout" class="btn logout"><i class="material-icons">logout</i></button>
       </div>
 
-      <!-- Inga status‐bubblor här, bara vanliga meddelanden -->
-      <div id="chatWindow"></div>
-
-      <!-- “Ove skriver…” bubblan ligger utanför chatWindow -->
-      <div
-        id="statusBar"
-        class="message assistant typing-bubble hidden"
-      >
-        <span id="typingIndicator" class="typing">
-          <span></span><span></span><span></span>
-        </span>
+      <div id="chatWindow">
+        <!-- Bubbla för “Ove skriver…” -->
+        <div id="statusBar" class="message assistant typing-bubble hidden">
+          <span id="typingIndicator" class="typing">
+            <span></span><span></span><span></span>
+          </span>
+        </div>
       </div>
 
       <div id="input-wrapper">
+        <!-- Peek-cirkel när Ove är online -->
         <div id="ovePeek" class="peek hidden"></div>
+
         <div id="input-area">
-          <textarea
-            id="messageInput"
-            rows="2"
-            placeholder="Skriv ditt meddelande…"
-          ></textarea>
-          <button id="sendBtn" class="btn">
-            <i class="material-icons">send</i>
-          </button>
+          <textarea id="messageInput" rows="2" placeholder="Skriv ditt meddelande…"></textarea>
+          <button id="sendBtn" class="btn"><i class="material-icons">send</i></button>
         </div>
       </div>
     </div>
