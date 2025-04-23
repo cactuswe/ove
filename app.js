@@ -1,29 +1,12 @@
-/* app.js -------------------------------------------------------- */
-
-/* ---------- Firebase-SDK-importer ---------- */
+/* ---------- Firebase-SDK ---------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  updateProfile,
-  signOut
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, updateProfile, signOut
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  getDocs,                  // <— NY!
-  updateDoc,
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  where,
-  onSnapshot,
-  serverTimestamp
+  getFirestore, doc, setDoc, getDocs, updateDoc, collection,
+  addDoc, query, orderBy, where, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 /* ---------- Init Firebase ---------- */
@@ -41,27 +24,27 @@ const auth = getAuth(app);
 const db   = getFirestore(app);
 
 /* ---------- DOM-refs ---------- */
+const $ = (id)=>document.getElementById(id);
 const tabs            = document.querySelectorAll(".tab");
 const tabContents     = document.querySelectorAll(".tab-content");
-const authUI          = document.getElementById("authUI");
-const chatUI          = document.getElementById("chatUI");
-const loginForm       = document.getElementById("loginForm");
-const registerForm    = document.getElementById("registerForm");
-const loginId         = document.getElementById("loginId");
-const loginPw         = document.getElementById("loginPassword");
-const btnLogin        = document.getElementById("btnLogin");
-const regDn           = document.getElementById("regDisplayName");
-const regEm           = document.getElementById("regEmail");
-const regPw           = document.getElementById("regPassword");
-const btnRegister     = document.getElementById("btnRegister");
-const btnLogout       = document.getElementById("btnLogout");
-const userNameEl      = document.getElementById("userName");
-const chatWindow      = document.getElementById("chatWindow");
-const messageIn       = document.getElementById("messageInput");
-const sendBtn         = document.getElementById("sendBtn");
-const ovePeek         = document.getElementById("ovePeek");
-const typingIndicator = document.getElementById("typingIndicator");
-const statusBarEl     = document.getElementById("statusBar");
+const authUI          = $("authUI");
+const chatUI          = $("chatUI");
+const loginForm       = $("loginForm");
+const registerForm    = $("registerForm");
+const loginId         = $("loginId");
+const loginPw         = $("loginPassword");
+const btnLogin        = $("btnLogin");
+const regDn           = $("regDisplayName");
+const regEm           = $("regEmail");
+const regPw           = $("regPassword");
+const btnRegister     = $("btnRegister");
+const btnLogout       = $("btnLogout");
+const userNameEl      = $("userName");
+const chatWindow      = $("chatWindow");
+const messageIn       = $("messageInput");
+const sendBtn         = $("sendBtn");
+const ovePeek         = $("ovePeek");
+const typingIndicator = $("typingIndicator");
 
 let chatUnsub, presenceUnsub, presenceRef;
 let isOveActive = false;
@@ -71,197 +54,172 @@ let chatHistory = [];
 let chatSummary = "";
 
 /* ---------- Summerings-funktion ---------- */
-async function summarizeMessages(messages, previousSummary = "") {
+async function summarizeMessages(messages, previousSummary=""){
   let prompt = "Sammanfatta följande konversation på max 60 ord:\n";
-  if (previousSummary) {
-    prompt += "Tidigare sammanfattning:\n" + previousSummary + "\n---\n";
-  }
-  messages.forEach(m => {
-    const who = m.role === "assistant" ? "Ove" : "Användare";
+  if(previousSummary) prompt += "Tidigare sammanfattning:\n"+previousSummary+"\n---\n";
+  messages.forEach(m=>{
+    const who = m.role==="assistant"?"Ove":"Användare";
     prompt += `${who}: ${m.content}\n`;
   });
-  const res = await fetch("/api/anthropic", {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ message: prompt })
+  const r = await fetch("/api/anthropic",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({message:prompt})
   });
-  const data = await res.json();
-  return data.reply.trim();
+  const d = await r.json();
+  return d.reply.trim();
 }
 
-/* ---------- Chat-UI-helpers ---------- */
-function appendMessage(role, text) {
-  const div       = document.createElement("div");
-  div.className   = "message " + role;
-  div.textContent = text;
+/* ---------- UI-helpers ---------- */
+function appendMessage(role,text){
+  const div=document.createElement("div");
+  div.className="message "+role;
+  div.textContent=text;
   chatWindow.append(div);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+  chatWindow.scrollTop=chatWindow.scrollHeight;
+}
+function addTypingBubble(){
+  const b=document.createElement("div");
+  b.className="message assistant typing";
+  for(let i=0;i<3;i++){
+    const dot=document.createElement("span");
+    dot.className="dot"; b.append(dot);
+  }
+  chatWindow.append(b);
+  chatWindow.scrollTop=chatWindow.scrollHeight;
+  return b;
 }
 
-/* ---------- Tab-växling ---------- */
-tabs.forEach(tab => {
-  tab.addEventListener("click", () => {
-    tabs.forEach(t => t.classList.remove("active"));
-    tabContents.forEach(c => c.classList.remove("active"));
+/* ---------- Tabs ---------- */
+tabs.forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    tabs.forEach(t=>t.classList.remove("active"));
+    tabContents.forEach(c=>c.classList.remove("active"));
     tab.classList.add("active");
-    document.getElementById(tab.dataset.tab).classList.add("active");
+    $(tab.dataset.tab).classList.add("active");
   });
 });
 
-/* ---------- Förhindra formular-reload ---------- */
-loginForm.addEventListener("submit", e => { e.preventDefault(); btnLogin.click(); });
-registerForm.addEventListener("submit", e => { e.preventDefault(); btnRegister.click(); });
+/* ---------- Stoppa default-submit ---------- */
+loginForm.addEventListener("submit",e=>{e.preventDefault();btnLogin.click();});
+registerForm.addEventListener("submit",e=>{e.preventDefault();btnRegister.click();});
 
-/* ===================  AUTH  =================== */
-btnRegister.addEventListener("click", async () => {
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, regEm.value, regPw.value);
-    await updateProfile(cred.user, { displayName: regDn.value });
-    await setDoc(doc(db, "users", cred.user.uid), {
-      displayName: regDn.value,
-      email:       cred.user.email
-    });
-  } catch (e) {
-    alert("Registreringsfel: " + e.message);
-  }
+/* ==================== AUTH ==================== */
+btnRegister.addEventListener("click",async()=>{
+  try{
+    const cred=await createUserWithEmailAndPassword(auth,regEm.value,regPw.value);
+    await updateProfile(cred.user,{displayName:regDn.value});
+    await setDoc(doc(db,"users",cred.user.uid),{displayName:regDn.value,email:cred.user.email});
+  }catch(e){alert("Registreringsfel: "+e.message);}
 });
 
-btnLogin.addEventListener("click", async () => {
-  try {
-    let email = loginId.value.trim();
-
-    // Tillåt login med visningsnamn
-    if (email && !/@/.test(email)) {
-      const q    = query(collection(db, "users"), where("displayName", "==", email));
-      const snap = await getDocs(q);                      // <— getDocs istället för getDoc
-      if (snap.empty) throw new Error("Ingen användare med det visningsnamnet");
-      email = snap.docs[0].data().email;
+btnLogin.addEventListener("click",async()=>{
+  try{
+    let email=loginId.value.trim();
+    if(email && !/@/.test(email)){
+      const snap=await getDocs(query(collection(db,"users"),where("displayName","==",email)));
+      if(snap.empty) throw new Error("Ingen användare med det visningsnamnet");
+      email=snap.docs[0].data().email;
     }
-    await signInWithEmailAndPassword(auth, email, loginPw.value);
-  } catch (e) {
-    alert("Login-fel: " + e.message);
-  }
+    await signInWithEmailAndPassword(auth,email,loginPw.value);
+  }catch(e){alert("Login-fel: "+e.message);}
 });
 
-btnLogout.addEventListener("click", () => signOut(auth));
+btnLogout.addEventListener("click",()=>signOut(auth));
 
-/* =================  CHAT & NÄRVARO  ================ */
-onAuthStateChanged(auth, user => {
-  if (user) {
-    /* --- prenumerera på närvaro --- */
-    presenceRef = doc(db, "presence", "ove");
+/* ================= CHAT & PRESENCE ============ */
+onAuthStateChanged(auth,user=>{
+  if(user){
+    /* Närvaro */
+    presenceRef=doc(db,"presence","ove");
     presenceUnsub?.();
-    presenceUnsub = onSnapshot(presenceRef, snap => {
-      const d         = snap.exists() ? snap.data() : {};
-      isOveActive     = !!d.active;
-      ovePeek.classList.toggle("hidden", !d.active);
-      statusBarEl.classList.toggle("hidden", !d.typing);
+    presenceUnsub=onSnapshot(presenceRef,snap=>{
+      const d=snap.exists()?snap.data():{};
+      isOveActive=!!d.active;
+      ovePeek.classList.toggle("active",d.active);
+      typingIndicator.classList.toggle("hidden",!d.typing);
     });
 
-    /* --- visa chatten --- */
+    /* UI */
     authUI.classList.add("hidden");
     chatUI.classList.remove("hidden");
-    userNameEl.textContent = user.displayName || user.email;
+    userNameEl.textContent=user.displayName||user.email;
     messageIn.focus();
 
-    /* --- prenumerera på alla meddelanden --- */
-    const msgsQ = query(collection(db, "messages"), orderBy("timestamp"));
+    /* Meddelanden */
     chatUnsub?.();
-    chatUnsub = onSnapshot(msgsQ, snap => {
-      chatWindow.innerHTML = "";
-      snap.forEach(d => appendMessage(d.data().role, d.data().content));
+    chatUnsub=onSnapshot(query(collection(db,"messages"),orderBy("timestamp")),snap=>{
+      chatWindow.innerHTML="";
+      snap.forEach(d=>appendMessage(d.data().role,d.data().content));
     });
 
-  } else {
-    chatUnsub?.();
-    presenceUnsub?.();
+  }else{
+    chatUnsub?.();presenceUnsub?.();
     chatUI.classList.add("hidden");
     authUI.classList.remove("hidden");
   }
 });
 
-/* =================  SKICKA MEDDELANDE  ================ */
-sendBtn.addEventListener("click", sendMessage);
-messageIn.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+/* ================= SKICKA ===================== */
+sendBtn.addEventListener("click",sendMessage);
+messageIn.addEventListener("keydown",e=>{
+  if(e.key==="Enter" && !e.shiftKey){e.preventDefault();sendMessage();}
 });
 
-async function sendMessage() {
-  const text = messageIn.value.trim();
-  if (!text) return;
+async function sendMessage(){
+  const text=messageIn.value.trim();
+  if(!text) return;
 
-  /* --- Väck Ove om han nämns --- */
-  if (presenceRef && text.toLowerCase().includes("ove")) {
-    await setDoc(presenceRef, {
-      active:    true,
-      typing:    false,
-      timestamp: serverTimestamp()
-    });
+  const mentioned=text.toLowerCase().includes("ove");
+  if(mentioned && presenceRef){
+    await setDoc(presenceRef,{active:true,typing:false,timestamp:serverTimestamp()});
+    isOveActive=true;
   }
 
-  messageIn.value = "";
-  messageIn.focus();
+  messageIn.value="";messageIn.focus();
+  const user=auth.currentUser;
+  if(!user) return alert("Du måste vara inloggad!");
 
-  const user = auth.currentUser;
-  if (!user) return alert("Du måste vara inloggad!");
-
-  /* --- Historik & ev. sammanfattning --- */
-  chatHistory.push({ role: "user", content: text });
-  if (chatHistory.length > 8) {
-    const toSum      = chatHistory.slice(0, chatHistory.length - 4);
-    chatSummary      = await summarizeMessages(toSum, chatSummary);
-    chatHistory      = chatHistory.slice(chatHistory.length - 4);
+  /* Historik */
+  chatHistory.push({role:"user",content:text});
+  if(chatHistory.length>8){
+    const toSum=chatHistory.slice(0,chatHistory.length-4);
+    chatSummary=await summarizeMessages(toSum,chatSummary);
+    chatHistory=chatHistory.slice(chatHistory.length-4);
   }
 
-  /* --- Bygg prompt för Claude --- */
-  let prompt = "";
-  if (chatSummary) prompt += "Tidigare sammanfattning:\n" + chatSummary + "\n---\n";
-  prompt += "Senaste meddelanden:\n";
-  chatHistory.forEach(m => {
-    const who = m.role === "assistant" ? "Ove" : "Användare";
-    prompt += `${who}: ${m.content}\n`;
+  /* Prompt */
+  let prompt="";
+  if(chatSummary) prompt+="Tidigare sammanfattning:\n"+chatSummary+"\n---\n";
+  prompt+="Senaste meddelanden:\n";
+  chatHistory.forEach(m=>{
+    const who=m.role==="assistant"?"Ove":"Användare";
+    prompt+=`${who}: ${m.content}\n`;
   });
-  prompt += "Ovan är kontexten. Svara nu på: " + text;
+  prompt+="Ovan är kontexten. Svara nu på: "+text;
 
-  /* --- Spara user-msg i Firestore --- */
-  await addDoc(collection(db, "messages"), {
-    role:      "user",
-    content:   text,
-    timestamp: serverTimestamp()
-  });
+  /* Spara user-msg */
+  await addDoc(collection(db,"messages"),{role:"user",content:text,timestamp:serverTimestamp()});
 
-  /* --- Ring Ove (Claude) om online --- */
-  if (isOveActive && presenceRef) {
-    await updateDoc(presenceRef, { typing: true, timestamp: serverTimestamp() });
+  /* Ring Ove om aktiv */
+  const askOve=mentioned||isOveActive;
+  if(askOve && presenceRef){
+    const typingBubble=addTypingBubble();
+    await updateDoc(presenceRef,{typing:true,timestamp:serverTimestamp()});
 
-    const res   = await fetch("/api/anthropic", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ message: prompt })
-    });
-    const data  = await res.json();
-    const reply = data.reply.trim();
+    const r=await fetch("/api/anthropic",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:prompt})});
+    const d=await r.json();
+    const reply=d.reply.trim();
 
-    await addDoc(collection(db, "messages"), {
-      role:      "assistant",
-      content:   reply,
-      timestamp: serverTimestamp()
-    });
+    typingBubble.remove();
+    appendMessage("assistant",reply);
+    await addDoc(collection(db,"messages"),{role:"assistant",content:reply,timestamp:serverTimestamp()});
 
-    chatHistory.push({ role: "assistant", content: reply });
-    await updateDoc(presenceRef, { typing: false, timestamp: serverTimestamp() });
+    chatHistory.push({role:"assistant",content:reply});
+    await updateDoc(presenceRef,{typing:false,timestamp:serverTimestamp()});
 
-    /* --- Stäng av Ove om han säger hejdå --- */
-    const bye = reply.toLowerCase();
-    if (bye.includes("hejdå") || bye.includes("tröttnat")) {
-      await setDoc(presenceRef, {
-        active:    false,
-        typing:    false,
-        timestamp: serverTimestamp()
-      });
+    const bye=reply.toLowerCase();
+    if(bye.includes("hejdå")||bye.includes("tröttnat")){
+      await setDoc(presenceRef,{active:false,typing:false,timestamp:serverTimestamp()});
     }
   }
 }
