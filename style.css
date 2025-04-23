@@ -1,161 +1,34 @@
-:root {
-  --bg:       #f5f5f5;
-  --surface:  #ffffff;
-  --text:     #333333;
-  --text-alt: #555555;
-  --border:   #dddddd;
-  --muted:    #777777;
-  --online:   #4caf50;
-}
+/* Reset/grund */
+*{box-sizing:border-box;font-family:system-ui, sans-serif}
+body{margin:0;display:grid;place-items:center;height:100vh;background:#fafafa}
+.hidden{display:none}
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
-body {
-  font-family: "Segoe UI", sans-serif;
-  background: var(--bg);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem;
-}
-main {
-  width: 100%; max-width: 800px; height: 100%;
-  background: var(--surface); border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-  display: flex; flex-direction: column; overflow: hidden;
-}
+/* Tabs */
+.tab{padding:.5rem 1rem;border:none;background:#eee;cursor:pointer}
+.tab.active{background:#ccc}
+.tab-content{display:none;padding:1rem;border:1px solid #ccc;width:280px}
+.tab-content.active{display:block}
 
-/* ===== AUTH ===== */
-.tabs {
-  display: flex; border-bottom: 1px solid var(--border);
-}
-.tab {
-  flex:1; text-align:center; padding:0.75rem;
-  cursor:pointer; color:var(--text-alt); background:var(--surface);
-  display:flex; justify-content:center; align-items:center;
-  gap:0.5em; border-bottom:2px solid transparent;
-  transition: color .2s, border-color .2s;
-}
-.tab.active {
-  color:var(--text); border-color:var(--text-alt);
-}
-.tab-content {
-  display:none; padding:1rem; flex:1; overflow-y:auto;
-}
-.tab-content.active { display:block; }
+/* Chatlayout */
+#chatUI{width:100%;max-width:420px;display:flex;flex-direction:column;gap:.5rem}
+#chatWindow{flex:1;padding:1rem;overflow-y:auto;background:white;border:1px solid #ccc}
+#messageInput{flex:1;resize:none;padding:.5rem}
+footer{display:flex;gap:.5rem}
+#sendBtn{padding:.5rem 1rem}
 
-.form-group {
-  margin-bottom:1rem;
-}
-.form-group label {
-  display:flex; align-items:center; gap:0.5em;
-  margin-bottom:0.25rem; color:var(--text-alt); font-size:0.9rem;
-}
-.form-group input {
-  width:100%; padding:0.5rem; font-size:1rem;
-  border:1px solid var(--border); border-radius:4px;
-  background:var(--surface); color:var(--text);
-}
+/* Meddelanden */
+.message{margin:.25rem 0;max-width:85%}
+.message.user{align-self:flex-end;background:#cfe9ff;padding:.4rem .6rem;border-radius:8px 8px 0 8px}
+.message.assistant{align-self:flex-start;background:#eee;padding:.4rem .6rem;border-radius:8px 8px 8px 0}
 
-.btn {
-  display:flex; align-items:center; justify-content:center;
-  gap:0.5em; width:100%; padding:0.75rem;
-  background:var(--text-alt); color:var(--surface);
-  border:none; border-radius:4px; cursor:pointer;
-  transition:background .2s;
-}
-.btn:hover { background:var(--text); }
-.btn.logout {
-  background:var(--border);
-}
-.btn.logout:hover {
-  background:var(--text-alt);
-}
+/* “Skriver …”-bubblan */
+.message.assistant.typing{display:inline-flex;gap:4px}
+.message.assistant.typing .dot{width:8px;height:8px;border-radius:50%;background:#9e9e9e;opacity:0;animation:blink 1.4s infinite both}
+.message.assistant.typing .dot:nth-child(2){animation-delay:.2s}
+.message.assistant.typing .dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:0}40%{opacity:1}}
 
-/* ===== CHAT ===== */
-#chatUI { display:flex; flex-direction:column; height:100%; }
-.hidden { display:none !important; }
-
-#chat-header {
-  padding:0.75rem 1rem; border-bottom:1px solid var(--border);
-  display:flex; justify-content:space-between; align-items:center;
-  background:var(--bg); color:var(--text);
-}
-
-#chatWindow {
-  flex:1; padding:1rem; overflow-y:auto; background:var(--bg);
-}
-
-/* Vanliga meddelande-bubblor */
-.message {
-  margin-bottom:0.75rem; max-width:80%; padding:0.5rem;
-  border-radius:8px; background:var(--surface); color:var(--text);
-  line-height:1.4; word-wrap:break-word;
-}
-.message.user {
-  margin-left:auto; background:var(--text-alt); color:var(--surface);
-}
-.message.assistant {
-  margin-right:auto; border:1px solid var(--border);
-}
-
-/* ===== TYPING-BUBBLE ===== */
-.typing-bubble {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 0.75rem;
-  margin-bottom: 0.75rem;
-  max-width: 60%;
-  border-radius: 12px 12px 12px 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.typing-bubble.hidden {
-  display: none !important;
-}
-.typing {
-  display:flex; gap:4px; margin-left:auto;
-}
-.typing span {
-  width:8px; height:8px; border-radius:50%;
-  background:var(--muted); animation:blink 1s infinite;
-}
-.typing span:nth-child(2) { animation-delay:.2s; }
-.typing span:nth-child(3) { animation-delay:.4s; }
-@keyframes blink {
-  0%,80%,100% { opacity:0; }
-  40% { opacity:1; }
-}
-
-/* ===== PEEK ===== */
-#input-wrapper { position:relative; }
-.peek {
-  position:absolute; width:32px; height:32px;
-  border-radius:50%; background:var(--online);
-  bottom:calc(100% - 16px); left:1rem;
-  box-shadow:0 2px 6px rgba(0,0,0,0.2);
-}
-.peek.hidden { display:none; }
-
-/* ===== INPUT ===== */
-#input-area {
-  display:flex; padding:0.75rem 1rem;
-  border-top:1px solid var(--border); background:var(--bg);
-}
-#messageInput {
-  flex:1; padding:0.5rem; border:1px solid var(--border);
-  border-radius:4px; resize:none; margin-right:0.5rem;
-  background:var(--surface); color:var(--text); font-size:1rem;
-}
-#sendBtn { flex-shrink:0; width:48px; }
-
-/* ===== RESPONSIVT ===== */
-@media(max-width:600px){
-  #chat-header,#statusBar,#input-area{
-    flex-direction:column; align-items:stretch;
-  }
-  #messageInput{ margin:0 0 0.5rem 0;}
-  #sendBtn{ width:100%;}
-  .message{ max-width:100%;}
-}
+/* Ove-Peek ­– ansiktet som tittar upp */
+#ovePeek{position:absolute;right:1rem;bottom:4.2rem;width:42px;height:42px;border-radius:50%;background:url("/ove-face.svg") center/cover no-repeat;transform:translateY(100%);transition:transform .35s}
+#ovePeek.active{transform:translateY(0)}
+	
