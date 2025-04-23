@@ -418,6 +418,14 @@
       const text = messageIn.value.trim();
       if (!text) return;
 
+      if (presenceRef && text.toLowerCase().includes("ove")) {
+        await setDoc(presenceRef, {
+          active:    true,
+          typing:    false,
+          timestamp: serverTimestamp()
+        });
+      }
+      
       // Töm input direkt
       messageIn.value = "";
       messageIn.focus();
