@@ -68,6 +68,43 @@
     <div id="ovePeek"></div>
   </div>
 
+  <script>
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(registration => {
+                    console.log('ServiceWorker registration successful');
+                })
+                .catch(err => {
+                    console.error('ServiceWorker registration failed: ', err);
+                });
+        });
+    }
+    
+    // Förbättra textarea hantering för iOS
+    const messageInput = document.getElementById('messageInput');
+    messageInput.addEventListener('focus', () => {
+        setTimeout(() => {
+            document.documentElement.scrollTop = document.documentElement.scrollHeight;
+        }, 300);
+    });
+    
+    // Förhindra dubbel-tap zoom på iOS
+    document.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.target.click();
+    }, false);
+    
+    // Hantera iOS virtuellt tangentbord
+    const viewport = window.visualViewport;
+    if (viewport) {
+        viewport.addEventListener('resize', () => {
+            const chatUI = document.getElementById('chatUI');
+            chatUI.style.height = `${viewport.height}px`;
+        });
+    }
+  </script>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
