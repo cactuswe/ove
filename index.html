@@ -14,10 +14,25 @@
     }
     .message.user   { text-align: right; color: #007bff; }
     .message.assistant { text-align: left; color: #333; }
+    .indicator {
+      padding: 0 0.6em;
+      border-radius: 1em;
+      font-size: 0.9em;
+      vertical-align: middle;
+    }
+    .indicator.offline {
+      background: #ccc;
+      color: #666;
+    }
+    .indicator.online {
+      background: #4caf50;
+      color: white;
+    }
+
   </style>
 </head>
 <body>
-  <h1>Chat med Ove (Claude 3)</h1>
+  <h1>Chat med Ove</h1>
 
   <!-- Auth UI -->
   <div id="authUI">
@@ -37,6 +52,11 @@
   <div id="chatUI" class="hidden">
     <p>Inloggad som <span id="userName"></span> - <button id="btnLogout">Logga ut</button></p>
     <div id="chatWindow"></div>
+    <!-- Ove-status -->
+    <div id="oveStatusContainer" style="margin-bottom:0.5rem;">
+      <strong>Ove:</strong>
+      <span id="oveIndicator" class="indicator offline">Offline</span>
+    </div>
     <textarea id="messageInput" rows="3" placeholder="Skriv ditt meddelande…"></textarea>
     <button id="sendBtn">Skicka</button>
   </div>
@@ -105,6 +125,16 @@
     chatWindow.append(div);
     chatWindow.scrollTop = chatWindow.scrollHeight;
   }
+  import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+  async function setOveActive(active) {
+    if (!presenceRef) return;
+    await setDoc(presenceRef, {
+      active,
+      timestamp: serverTimestamp()
+    });
+  }
+
 
   // 3) Registera
   btnReg.addEventListener("click", async () => {
@@ -146,6 +176,25 @@
 
   // 6) Sätt upp auth‑state‑listener
   onAuthStateChanged(auth, user => {
+    let presenceRef = null;
+    if (user) {
+      // …
+      presenceRef = doc(db, "chats", user.uid, "presence", "ove");
+      // Lyssna på närvaro-dokumentet
+      onSnapshot(presenceRef, snap => {
+        const isActive = snap.exists() && snap.data().active;
+        const ind = document.getElementById("oveIndicator");
+        if (isActive) {
+          ind.textContent = "Online";
+          ind.classList.remove("offline");
+          ind.classList.add("online");
+        } else {
+          ind.textContent = "Offline";
+          ind.classList.remove("online");
+          ind.classList.add("offline");
+        }
+      });
+    }
     if (user) {
       // visa chat UI
       authUI.classList.add("hidden");
@@ -177,7 +226,12 @@
     if (!text) return;
     const user = auth.currentUser;
     if (!user) return alert("Du måste vara inloggad!");
-
+  
+    // Om meddelandet innehåller "ove" – låt Ove gå in
+    if (text.toLowerCase().includes("ove")) {
+      await setOveActive(true);
+    }
+  
     // skriv användarens meddelande till Firestore
     const userMsgRef = collection(db, "chats", user.uid, "messages");
     await addDoc(userMsgRef, {
@@ -185,24 +239,31 @@
       content: text,
       timestamp: serverTimestamp()
     });
-
-    // anropa din serverless-funktion för Ove
+  
+    // anropa serverless-funktion för Ove
     const res = await fetch("/api/anthropic", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text, history: [] })
     });
     const data = await res.json();
-
+  
     // skriv Oves svar
     await addDoc(userMsgRef, {
       role: "assistant",
       content: data.reply,
       timestamp: serverTimestamp()
     });
-
+  
+    // Om Ove skriver hejdå eller tröttnat – låt hen gå ut
+    const reply = data.reply.toLowerCase();
+    if (reply.includes("hejdå") || reply.includes("tröttnat")) {
+      await setOveActive(false);
+    }
+  
     messageIn.value = "";
   });
+
   </script>
 </body>
 </html>
