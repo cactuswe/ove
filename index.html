@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chat med Ove (Claude 3)</title>
+  <title>Chat med Ove (Claude 3)</title>
   <style>
     body { font-family: sans-serif; margin: 2rem; max-width: 700px; }
     .hidden { display: none; }
@@ -12,23 +12,16 @@
       border: 1px solid #ccc; padding: 1rem; height: 300px; overflow-y: auto; 
       background: #f9f9f9; margin-bottom: 1rem;
     }
-    .message.user   { text-align: right; color: #007bff; }
-    .message.assistant { text-align: left; color: #333; }
+    .message.user      { text-align: right;   color: #007bff; }
+    .message.assistant { text-align: left;    color: #333;    }
     .indicator {
       padding: 0 0.6em;
       border-radius: 1em;
       font-size: 0.9em;
       vertical-align: middle;
     }
-    .indicator.offline {
-      background: #ccc;
-      color: #666;
-    }
-    .indicator.online {
-      background: #4caf50;
-      color: white;
-    }
-
+    .indicator.offline { background: #ccc;      color: #666; }
+    .indicator.online  { background: #4caf50;   color: white; }
   </style>
 </head>
 <body>
@@ -37,20 +30,24 @@
   <!-- Auth UI -->
   <div id="authUI">
     <h2>Registera nytt konto</h2>
-    <input id="regDisplayName"  type="text"     placeholder="Visningsnamn" />
-    <input id="regEmail"        type="email"    placeholder="E‑post" />
-    <input id="regPassword"     type="password" placeholder="Lösenord" />
+    <input id="regDisplayName" type="text"     placeholder="Visningsnamn" />
+    <input id="regEmail"       type="email"    placeholder="E-post" />
+    <input id="regPassword"    type="password" placeholder="Lösenord" />
     <button id="btnRegister">Registera</button>
     <hr>
     <h2>Logga in</h2>
-    <input id="loginId"     type="text"     placeholder="Visningsnamn eller e‑post" />
+    <input id="loginId"       type="text"     placeholder="Visningsnamn eller e-post" />
     <input id="loginPassword" type="password" placeholder="Lösenord" />
     <button id="btnLogin">Logga in</button>
   </div>
 
   <!-- Chat UI -->
   <div id="chatUI" class="hidden">
-    <p>Inloggad som <span id="userName"></span> - <button id="btnLogout">Logga ut</button></p>
+    <p>Inloggad som <strong><span id="userName"></span></strong>  
+      <button id="btnLogout" style="width:auto; display:inline-block; margin-left:1rem;">
+        Logga ut
+      </button>
+    </p>
     <div id="chatWindow"></div>
     <!-- Ove-status -->
     <div id="oveStatusContainer" style="margin-bottom:0.5rem;">
@@ -61,208 +58,206 @@
     <button id="sendBtn">Skicka</button>
   </div>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase SDK + App Code -->
   <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-  import {
-    getAuth,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    onAuthStateChanged,
-    updateProfile,
-    signOut
-  } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-  import {
-    getFirestore,
-    doc,
-    setDoc,
-    getDoc,
-    collection,
-    addDoc,
-    query,
-    orderBy,
-    onSnapshot,
-    serverTimestamp
-  } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      onAuthStateChanged,
+      updateProfile,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      getDoc,
+      collection,
+      addDoc,
+      query,
+      where,
+      orderBy,
+      onSnapshot,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-  // 1) Initiera Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyBRMtuyLiyRfWwq1p3e_dSE83Z7sBYJM3I",
-    authDomain: "ove-ai.firebaseapp.com",
-    projectId: "ove-ai",
-    storageBucket: "ove-ai.firebasestorage.app",
-    messagingSenderId: "200723689801",
-    appId: "1:200723689801:web:5dbedb16f582048081ea98",
-    measurementId: "G-PEZM6B3N58"
-  };
-  const app      = initializeApp(firebaseConfig);
-  const auth     = getAuth(app);
-  const db       = getFirestore(app);
+    // --- 1) Initiera Firebase ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyBRMtuyLiyRfWwq1p3e_dSE83Z7sBYJM3I",
+      authDomain: "ove-ai.firebaseapp.com",
+      projectId: "ove-ai",
+      storageBucket: "ove-ai.firebasestorage.app",
+      messagingSenderId: "200723689801",
+      appId: "1:200723689801:web:5dbedb16f582048081ea98",
+      measurementId: "G-PEZM6B3N58"
+    };
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
 
-  // 2) UI-element
-  const authUI      = document.getElementById("authUI");
-  const chatUI      = document.getElementById("chatUI");
-  const regDn       = document.getElementById("regDisplayName");
-  const regEm       = document.getElementById("regEmail");
-  const regPw       = document.getElementById("regPassword");
-  const btnReg      = document.getElementById("btnRegister");
-  const loginId     = document.getElementById("loginId");
-  const loginPw     = document.getElementById("loginPassword");
-  const btnLogin    = document.getElementById("btnLogin");
-  const btnLogout   = document.getElementById("btnLogout");
-  const userNameEl  = document.getElementById("userName");
-  const chatWindow  = document.getElementById("chatWindow");
-  const messageIn   = document.getElementById("messageInput");
-  const sendBtn     = document.getElementById("sendBtn");
+    // --- 2) UI-element ---
+    const authUI      = document.getElementById("authUI");
+    const chatUI      = document.getElementById("chatUI");
+    const regDn       = document.getElementById("regDisplayName");
+    const regEm       = document.getElementById("regEmail");
+    const regPw       = document.getElementById("regPassword");
+    const btnReg      = document.getElementById("btnRegister");
+    const loginId     = document.getElementById("loginId");
+    const loginPw     = document.getElementById("loginPassword");
+    const btnLogin    = document.getElementById("btnLogin");
+    const btnLogout   = document.getElementById("btnLogout");
+    const userNameEl  = document.getElementById("userName");
+    const chatWindow  = document.getElementById("chatWindow");
+    const messageIn   = document.getElementById("messageInput");
+    const sendBtn     = document.getElementById("sendBtn");
+    const oveIndicator = document.getElementById("oveIndicator");
 
-  let chatListenerUnsub = null;
-
-  // Helper: visa meddelande i chatfönstret
-  function appendMessage(role, text) {
-    const div = document.createElement("div");
-    div.classList.add("message", role);
-    div.textContent = text;
-    chatWindow.append(div);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-  }
-  import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-
-  async function setOveActive(active) {
-    if (!presenceRef) return;
-    await setDoc(presenceRef, {
-      active,
-      timestamp: serverTimestamp()
-    });
-  }
-
-
-  // 3) Registera
-  btnReg.addEventListener("click", async () => {
-    try {
-      const userCred = await createUserWithEmailAndPassword(auth, regEm.value, regPw.value);
-      // sätt visningsnamn
-      await updateProfile(userCred.user, { displayName: regDn.value });
-      // spara också i Firestore för login via visningsnamn
-      await setDoc(doc(db, "users", userCred.user.uid), {
-        displayName: regDn.value,
-        email: userCred.user.email
-      });
-    } catch (e) {
-      alert("Registreringsfel: " + e.message);
-    }
-  });
-
-  // 4) Login (email eller visningsnamn)
-  btnLogin.addEventListener("click", async () => {
-    try {
-      let emailToUse = loginId.value;
-      if (!/@/.test(loginId.value)) {
-        // sök på visningsnamn i Firestore
-        const q = query(collection(db, "users"), orderBy("displayName"));
-        const snap = await (await getDoc(doc(db, "users", loginId.value))).data()
-        // alternativt: kamera, men vi gjorde setDoc(uid) ovan → identifiera med uid?
-        // För enkelhet: vi antog loginId = uid vid visningsnamn…
-        // Om du vill mer robust: använd collection+where("displayName","==",loginId)
-        // och hämta email där.
-      }
-      await signInWithEmailAndPassword(auth, emailToUse, loginPw.value);
-    } catch (e) {
-      alert("Login-fel: " + e.message);
-    }
-  });
-
-  // 5) Logga ut
-  btnLogout.addEventListener("click", () => signOut(auth));
-
-  // 6) Sätt upp auth‑state‑listener
-  onAuthStateChanged(auth, user => {
+    let chatListenerUnsub = null;
     let presenceRef = null;
-    if (user) {
-      // …
-      presenceRef = doc(db, "chats", user.uid, "presence", "ove");
-      // Lyssna på närvaro-dokumentet
-      onSnapshot(presenceRef, snap => {
-        const isActive = snap.exists() && snap.data().active;
-        const ind = document.getElementById("oveIndicator");
-        if (isActive) {
-          ind.textContent = "Online";
-          ind.classList.remove("offline");
-          ind.classList.add("online");
-        } else {
-          ind.textContent = "Offline";
-          ind.classList.remove("online");
-          ind.classList.add("offline");
-        }
+
+    // --- Hjälp: visa meddelande i chatfönstret ---
+    function appendMessage(role, text) {
+      const div = document.createElement("div");
+      div.classList.add("message", role);
+      div.textContent = text;
+      chatWindow.append(div);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    // --- Sätt Ove online/offline i Firestore ---
+    async function setOveActive(active) {
+      if (!presenceRef) return;
+      await setDoc(presenceRef, {
+        active,
+        timestamp: serverTimestamp()
       });
     }
-    if (user) {
-      // visa chat UI
-      authUI.classList.add("hidden");
-      chatUI.classList.remove("hidden");
-      userNameEl.textContent = user.displayName || user.email;
 
-      // lyssna i Firestore på chatten för just det här användar‑UID:t
-      const col = collection(db, "chats", user.uid, "messages");
-      const q   = query(col, orderBy("timestamp"));
-      if (chatListenerUnsub) chatListenerUnsub();
-      chatListenerUnsub = onSnapshot(q, snap => {
-        chatWindow.textContent = "";
-        snap.forEach(doc => {
-          const { role, content } = doc.data();
-          appendMessage(role, content);
+    // --- 3) Registrera nytt konto ---
+    btnReg.addEventListener("click", async () => {
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, regEm.value, regPw.value);
+        await updateProfile(userCred.user, { displayName: regDn.value });
+        await setDoc(doc(db, "users", userCred.user.uid), {
+          displayName: regDn.value,
+          email: userCred.user.email
         });
-      });
-    } else {
-      // visa login/register
-      if (chatListenerUnsub) chatListenerUnsub();
-      authUI.classList.remove("hidden");
-      chatUI.classList.add("hidden");
-    }
-  });
+      } catch (e) {
+        alert("Registreringsfel: " + e.message);
+      }
+    });
 
-  // 7) Skicka meddelande
-  sendBtn.addEventListener("click", async () => {
-    const text = messageIn.value.trim();
-    if (!text) return;
-    const user = auth.currentUser;
-    if (!user) return alert("Du måste vara inloggad!");
-  
-    // Om meddelandet innehåller "ove" – låt Ove gå in
-    if (text.toLowerCase().includes("ove")) {
-      await setOveActive(true);
-    }
-  
-    // skriv användarens meddelande till Firestore
-    const userMsgRef = collection(db, "chats", user.uid, "messages");
-    await addDoc(userMsgRef, {
-      role: "user",
-      content: text,
-      timestamp: serverTimestamp()
+    // --- 4) Logga in (e-post eller visningsnamn) ---
+    btnLogin.addEventListener("click", async () => {
+      try {
+        let emailToUse = loginId.value.trim();
+        if (emailToUse && !/@/.test(emailToUse)) {
+          // Hitta e-post via visningsnamn
+          const q = query(
+            collection(db, "users"),
+            where("displayName", "==", emailToUse),
+            orderBy("displayName")
+          );
+          const snap = await (await getDoc(q)).data
+            ? await getDoc(q)
+            : null;
+          if (!snap || snap.empty) {
+            throw new Error("Hittade inget konto med det visningsnamnet");
+          }
+          emailToUse = snap.docs[0].data().email;
+        }
+        await signInWithEmailAndPassword(auth, emailToUse, loginPw.value);
+      } catch (e) {
+        alert("Login-fel: " + e.message);
+      }
     });
-  
-    // anropa serverless-funktion för Ove
-    const res = await fetch("/api/anthropic", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, history: [] })
+
+    // --- 5) Logga ut ---
+    btnLogout.addEventListener("click", () => signOut(auth));
+
+    // --- 6) Auth-state-listener: visa rätt UI, lyssna message + presence ---
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        // spara närvaro-ref
+        presenceRef = doc(db, "chats", user.uid, "presence", "ove");
+        // prenumerera på Oves status
+        onSnapshot(presenceRef, snap => {
+          const isActive = snap.exists() && snap.data().active;
+          oveIndicator.textContent = isActive ? "Online" : "Offline";
+          oveIndicator.classList.toggle("online", isActive);
+          oveIndicator.classList.toggle("offline", !isActive);
+        });
+
+        // visa chat UI
+        authUI.classList.add("hidden");
+        chatUI.classList.remove("hidden");
+        userNameEl.textContent = user.displayName || user.email;
+
+        // prenumerera på chat-meddelanden
+        const msgsCol = collection(db, "chats", user.uid, "messages");
+        const msgsQ   = query(msgsCol, orderBy("timestamp"));
+        if (chatListenerUnsub) chatListenerUnsub();
+        chatListenerUnsub = onSnapshot(msgsQ, snap => {
+          chatWindow.textContent = "";
+          snap.forEach(doc => {
+            const { role, content } = doc.data();
+            appendMessage(role, content);
+          });
+        });
+
+      } else {
+        // tillbaka till login/register
+        if (chatListenerUnsub) chatListenerUnsub();
+        authUI.classList.remove("hidden");
+        chatUI.classList.add("hidden");
+      }
     });
-    const data = await res.json();
-  
-    // skriv Oves svar
-    await addDoc(userMsgRef, {
-      role: "assistant",
-      content: data.reply,
-      timestamp: serverTimestamp()
+
+    // --- 7) Skicka meddelande ---
+    sendBtn.addEventListener("click", async () => {
+      const text = messageIn.value.trim();
+      if (!text) return;
+      const user = auth.currentUser;
+      if (!user) return alert("Du måste vara inloggad!");
+
+      // om användaren skriver "ove" → sätt online
+      if (text.toLowerCase().includes("ove")) {
+        await setOveActive(true);
+      }
+
+      // spara användarens meddelande
+      const userMsgs = collection(db, "chats", user.uid, "messages");
+      await addDoc(userMsgs, {
+        role: "user",
+        content: text,
+        timestamp: serverTimestamp()
+      });
+
+      // ring serverless-funktion för Ove
+      const res  = await fetch("/api/anthropic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, history: [] })
+      });
+      const data = await res.json();
+
+      // spara Oves svar
+      await addDoc(userMsgs, {
+        role: "assistant",
+        content: data.reply,
+        timestamp: serverTimestamp()
+      });
+
+      // om Ove säger "hejdå" eller "tröttnat" → sätt offline
+      const reply = data.reply.toLowerCase();
+      if (reply.includes("hejdå") || reply.includes("tröttnat")) {
+        await setOveActive(false);
+      }
+
+      messageIn.value = "";
     });
-  
-    // Om Ove skriver hejdå eller tröttnat – låt hen gå ut
-    const reply = data.reply.toLowerCase();
-    if (reply.includes("hejdå") || reply.includes("tröttnat")) {
-      await setOveActive(false);
-    }
-  
-    messageIn.value = "";
-  });
 
   </script>
 </body>
