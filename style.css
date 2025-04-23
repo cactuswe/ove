@@ -6,7 +6,6 @@
   --border:   #dddddd;
   --muted:    #777777;
   --online:   #4caf50;
-  --offline:  #bbbbbb;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,9 +40,8 @@ main {
   text-align: center;
   padding: 0.75rem;
   cursor: pointer;
-  background: var(--surface);
   color: var(--text-alt);
-  font-weight: 500;
+  background: var(--surface);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -62,6 +60,7 @@ main {
   overflow-y: auto;
 }
 .tab-content.active { display: block; }
+
 .form-group {
   margin-bottom: 1rem;
 }
@@ -77,11 +76,12 @@ main {
   width: 100%;
   padding: 0.5rem;
   font-size: 1rem;
-  color: var(--text);
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface);
+  color: var(--text);
 }
+
 .btn {
   display: flex;
   align-items: center;
@@ -92,14 +92,13 @@ main {
   background: var(--text-alt);
   color: var(--surface);
   border: none;
-  font-size: 1rem;
   border-radius: 4px;
   cursor: pointer;
   transition: background .2s;
 }
 .btn:hover { background: var(--text); }
 .btn.logout {
-  background: var(--offline);
+  background: var(--border);
 }
 .btn.logout:hover {
   background: var(--text-alt);
@@ -127,12 +126,11 @@ main {
 .message {
   margin-bottom: 0.75rem;
   max-width: 80%;
-  line-height: 1.4;
-  word-wrap: break-word;
   padding: 0.5rem;
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
+  line-height: 1.4;
 }
 .message.user {
   margin-left: auto;
@@ -141,8 +139,6 @@ main {
 }
 .message.assistant {
   margin-right: auto;
-  background: var(--surface);
-  color: var(--text);
   border: 1px solid var(--border);
 }
 
@@ -156,11 +152,6 @@ main {
   border-bottom: 1px solid var(--border);
   color: var(--text-alt);
 }
-.indicator {
-  font-size: 0.85rem;
-}
-.indicator.offline { color: var(--offline); }
-.indicator.online  { color: var(--online); }
 
 /* ===== PEEK CIRCLE ===== */
 #input-wrapper {
@@ -180,7 +171,7 @@ main {
   display: none;
 }
 
-/* ===== INPUT AREA ===== */
+/* ===== INPUT ===== */
 #input-area {
   display: flex;
   padding: 0.75rem 1rem;
@@ -190,13 +181,12 @@ main {
 #messageInput {
   flex: 1;
   padding: 0.5rem;
-  font-size: 1rem;
   border: 1px solid var(--border);
   border-radius: 4px;
   resize: none;
   margin-right: 0.5rem;
-  color: var(--text);
   background: var(--surface);
+  color: var(--text);
 }
 #sendBtn {
   flex-shrink: 0;
@@ -233,3 +223,4 @@ main {
   #sendBtn { width: 100%; }
   .message { max-width: 100%; }
 }
+
