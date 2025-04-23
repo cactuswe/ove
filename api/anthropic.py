@@ -1,8 +1,11 @@
+# api/anthropic.py
+
 import os
 import json
 import traceback
 from http.server import BaseHTTPRequestHandler
 
+# Din system-prompt
 system_prompt = """
 Du är Ove. En MÄNNISKA! Prata ALDRIG om dig själv i tredje person. 
 Ove är en oengagerad, dryg med ungdomsspråk och felstavningar. 
@@ -19,63 +22,69 @@ DU FÅR BARA SKRIVA AVSLUTNINGS FRASERNA OM DU VERKLIGEN INTE VILL PRATA LÄNGRE
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
+        # 1) Läs längd & body
+        length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(length).decode("utf-8")
+
+        # 2) JSON-parse
         try:
-            # Läs in rå JSON‑body
-            length = int(self.headers.get("Content-Length", 0))
-            raw    = self.rfile.read(length).decode("utf-8")
             payload = json.loads(raw)
-            user_input = payload.get("message")
-            history    = payload.get("history", [])
+        except json.JSONDecodeError:
+            return self._respond(400, {"error": "Invalid JSON in request body"})
 
-            if not isinstance(user_input, str) or not user_input.strip():
-                return self._respond(400, {"error": "Missing or invalid 'message' field"})
-            if not isinstance(history, list):
-                return self._respond(400, {"error": "'history' must be a list"})
+        user_input = payload.get("message")
+        history    = payload.get("history", [])
 
-            # Initiera Anthropics‑klient med Vercel‑env‑var
+        if not isinstance(user_input, str) or not user_input.strip():
+            return self._respond(400, {"error": "Missing or invalid 'message' field"})
+        if not isinstance(history, list):
+            return self._respond(400, {"error": "'history' must be a list"})
+
+        # 3) Initiera Anthropics-klient
+        try:
             import anthropic
-            api_key = os.getenv("ANTHROPIC_API_KEY")
-            if not api_key:
-                return self._respond(500, {"error": "Server config error: missing ANTHROPIC_API_KEY"})
-            client = anthropic.Anthropic(api_key=api_key)
+        except ImportError:
+            return self._respond(500, {"error": "Anthropic SDK not installed"})
 
-            # Lägg in användar‑meddelandet
-            history.append({"role":"user","content":user_input})
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            return self._respond(500, {"error": "Missing ANTHROPIC_API_KEY"})
 
-            # Sammanfatta om >6 meddelanden
-            if len(history)>6:
-                # Sammanfatta de äldsta
-                text = "\n".join(f"{m['role'].capitalize()}: {m['content']}" for m in history[:-6])
-                summary = client.messages.create(
-                    model="claude-3-haiku-20240307",
-                    max_tokens=300,
-                    temperature=0.5,
-                    system="Summera kortfattat den här konversationen:",
-                    messages=[{"role":"user","content": text}]
-                ).content[0].text
-                history = [{"role":"user","content":f"Sammanfattning: {summary}"}] + history[-6:]
+        client = anthropic.Client(api_key=api_key)
 
-            # Slutgiltigt anrop
-            resp = client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=500,
-                temperature=0.9,
-                system=system_prompt,   # definiera system_prompt högst upp i filen
-                messages=history
+        # 4) Lägg på användarens meddelande i historiken
+        history.append({"role": "user", "content": user_input})
+
+        # 5) (Valfritt) sammanfatta om historiken blir för lång
+        if len(history) > 6:
+            to_summarize = history[:-6]
+            text = "\n".join(f"{m['role']}: {m['content']}" for m in to_summarize)
+            summary_resp = client.completions.create(
+                model="claude-3",
+                prompt=f"Sammanfatta kort:\n{text}",
+                max_tokens_to_sample=200
             )
-            answer = resp.content[0].text
-            history.append({"role":"assistant","content":answer})
+            summary = summary_resp.completion.strip()
+            history = [{"role": "assistant", "content": f"Sammanfattning: {summary}"}] + history[-6:]
 
-            return self._respond(200, {"reply": answer, "history": history})
+        # 6) Skicka den fulla prompten till Claude 3
+        full_resp = client.completions.create(
+            model="claude-3",
+            prompt=system_prompt + "\n\n" + "\n".join(
+                f"{m['role'].capitalize()}: {m['content']}" for m in history
+            ),
+            max_tokens_to_sample=300
+        )
+        answer = full_resp.completion.strip()
+        history.append({"role": "assistant", "content": answer})
 
-        except Exception as e:
-            traceback.print_exc()
-            return self._respond(500, {"error":"Internal server error","details":str(e)})
+        # 7) Svara med JSON
+        return self._respond(200, {"reply": answer, "history": history})
 
-    def _respond(self, status, body):
-        data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+    def _respond(self, status, body_obj):
+        body = json.dumps(body_obj, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
-        self.send_header("Content-Type","application/json; charset=utf-8")
-        self.send_header("Content-Length",str(len(data)))
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(data)
+        self.wfile.write(body)
