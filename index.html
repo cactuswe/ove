@@ -5,57 +5,176 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chat med Ove (Claude 3)</title>
   <style>
-    body { font-family: sans-serif; margin: 2rem; max-width: 700px; }
-    .hidden { display: none; }
-    input, textarea, button { font-size: 1rem; margin-top: 0.5rem; width: 100%; }
+    /* ===== Global reset & grid ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      background: #f0f2f5;
+    }
+    main {
+      width: 100%;
+      max-width: 600px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== Auth UI ===== */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 0.75rem;
+      cursor: pointer;
+      background: #fafafa;
+      font-weight: 500;
+    }
+    .tab.active { background: #fff; border-bottom: 2px solid #4caf50; color: #4caf50; }
+    .tab-content {
+      padding: 1rem;
+      display: none;
+    }
+    .tab-content.active { display: block; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.9rem;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: #4caf50;
+      border: none;
+      color: white;
+      font-size: 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn:hover { background: #45a049; }
+
+    /* ===== Chat UI ===== */
+    #chatUI {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    #chat-header {
+      padding: 1rem;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
     #chatWindow {
-      border: 1px solid #ccc; padding: 1rem; height: 300px; overflow-y: auto;
-      background: #f9f9f9; margin-bottom: 0.5rem;
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      background: #fafafa;
     }
-    .message.user      { text-align: right;   color: #007bff; }
-    .message.assistant { text-align: left;    color: #333;    }
-    .indicator {
-      padding: 0 0.6em; border-radius: 1em; font-size: 0.9em; vertical-align: middle;
+    .message { margin-bottom: 0.75rem; max-width: 80%; word-wrap: break-word; }
+    .message.user { margin-left: auto; text-align: right; color: #fff; background: #007bff; padding: 0.5rem 0.75rem; border-radius: 12px 12px 0 12px; }
+    .message.assistant { margin-right: auto; text-align: left; color: #333; background: #e5e5ea; padding: 0.5rem 0.75rem; border-radius: 12px 12px 12px 0; }
+    #typingIndicator {
+      font-size: 0.9rem; color: #666; margin-left: 0.5rem;
     }
-    .indicator.offline { background: #ccc;    color: #666; }
-    .indicator.online  { background: #4caf50; color: #fff; }
+    #input-area {
+      display: flex;
+      padding: 0.75rem;
+      border-top: 1px solid #ddd;
+    }
+    #messageInput {
+      flex: 1;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: none;
+      margin-right: 0.5rem;
+    }
+    #sendBtn { flex-shrink: 0; }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 480px) {
+      .message { max-width: 100%; }
+      #chat-header, #input-area { flex-direction: column; }
+      #messageInput { margin-bottom: 0.5rem; margin-right: 0; }
+    }
   </style>
 </head>
 <body>
-  <h1>Chat med Ove</h1>
-
-  <!-- Auth UI -->
-  <div id="authUI">
-    <h2>Registera nytt konto</h2>
-    <input id="regDisplayName" type="text"     placeholder="Visningsnamn" />
-    <input id="regEmail"       type="email"    placeholder="E-post" />
-    <input id="regPassword"    type="password" placeholder="Lösenord" />
-    <button id="btnRegister">Registera</button>
-    <hr>
-    <h2>Logga in</h2>
-    <input id="loginId"       type="text"     placeholder="Visningsnamn eller e-post" />
-    <input id="loginPassword" type="password" placeholder="Lösenord" />
-    <button id="btnLogin">Logga in</button>
-  </div>
-
-  <!-- Chat UI -->
-  <div id="chatUI" class="hidden">
-    <p>
-      Inloggad som <strong><span id="userName"></span></strong>
-      <button id="btnLogout" style="width:auto; display:inline-block; margin-left:1rem;">
-        Logga ut
-      </button>
-    </p>
-    <div id="chatWindow"></div>
-    <!-- Ove-status -->
-    <div style="margin-bottom:0.5rem;">
-      <strong>Ove:</strong>
-      <span id="oveIndicator" class="indicator offline">Offline</span>
-      <span id="typingIndicator" class="indicator hidden">Ove skriver...</span>
+  <main>
+    <!-- AUTH -->
+    <div id="authUI">
+      <div class="tabs">
+        <div class="tab active" data-tab="login">Logga in</div>
+        <div class="tab" data-tab="register">Registrera</div>
+      </div>
+      <div id="login" class="tab-content active">
+        <div class="form-group">
+          <label for="loginId">Visningsnamn eller e-post</label>
+          <input id="loginId" type="text" />
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Lösenord</label>
+          <input id="loginPassword" type="password" />
+        </div>
+        <button id="btnLogin" class="btn">Logga in</button>
+      </div>
+      <div id="register" class="tab-content">
+        <div class="form-group">
+          <label for="regDisplayName">Visningsnamn</label>
+          <input id="regDisplayName" type="text" />
+        </div>
+        <div class="form-group">
+          <label for="regEmail">E-post</label>
+          <input id="regEmail" type="email" />
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Lösenord</label>
+          <input id="regPassword" type="password" />
+        </div>
+        <button id="btnRegister" class="btn">Registrera</button>
+      </div>
     </div>
-    <textarea id="messageInput" rows="3" placeholder="Skriv ditt meddelande…"></textarea>
-    <button id="sendBtn">Skicka</button>
-  </div>
+
+    <!-- CHAT -->
+    <div id="chatUI" class="hidden">
+      <div id="chat-header">
+        <div>Inloggad som <strong><span id="userName"></span></strong></div>
+        <button id="btnLogout" class="btn" style="width:auto; background:#f44336;">Logga ut</button>
+      </div>
+      <div id="chatWindow"></div>
+      <div id="statusBar" style="padding:0 1rem 0.5rem; display:flex; align-items:center;">
+        <strong>Ove:</strong>
+        <span id="oveIndicator" class="indicator offline" style="margin:0 0.5rem;">Offline</span>
+        <span id="typingIndicator" class="indicator hidden">Ove skriver...</span>
+      </div>
+      <div id="input-area">
+        <textarea id="messageInput" rows="2" placeholder="Skriv ditt meddelande…"></textarea>
+        <button id="sendBtn" class="btn">Skicka</button>
+      </div>
+    </div>
+  </main>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
@@ -71,17 +190,17 @@
       getFirestore,
       doc,
       setDoc,
+      updateDoc,
       collection,
       addDoc,
       query,
       orderBy,
       where,
       onSnapshot,
-      serverTimestamp,
-      updateDoc
+      serverTimestamp
     } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-    // --- Initiera Firebase ---
+    // --- Init ---
     const firebaseConfig = {
       apiKey: "AIzaSyBRMtuyLiyRfWwq1p3e_dSE83Z7sBYJM3I",
       authDomain: "ove-ai.firebaseapp.com",
@@ -95,40 +214,41 @@
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
-    // --- UI-element ---
-    const authUI         = document.getElementById("authUI");
-    const chatUI         = document.getElementById("chatUI");
-    const regDn          = document.getElementById("regDisplayName");
-    const regEm          = document.getElementById("regEmail");
-    const regPw          = document.getElementById("regPassword");
-    const btnReg         = document.getElementById("btnRegister");
-    const loginId        = document.getElementById("loginId");
-    const loginPw        = document.getElementById("loginPassword");
-    const btnLogin       = document.getElementById("btnLogin");
-    const btnLogout      = document.getElementById("btnLogout");
-    const userNameEl     = document.getElementById("userName");
-    const chatWindow     = document.getElementById("chatWindow");
-    const messageIn      = document.getElementById("messageInput");
-    const sendBtn        = document.getElementById("sendBtn");
-    const oveIndicator   = document.getElementById("oveIndicator");
-    const typingIndicator= document.getElementById("typingIndicator");
+    // --- UI refs ---
+    const tabs            = document.querySelectorAll(".tab");
+    const tabContents     = document.querySelectorAll(".tab-content");
+    const authUI          = document.getElementById("authUI");
+    const chatUI          = document.getElementById("chatUI");
+    const loginId         = document.getElementById("loginId");
+    const loginPw         = document.getElementById("loginPassword");
+    const btnLogin        = document.getElementById("btnLogin");
+    const regDn           = document.getElementById("regDisplayName");
+    const regEm           = document.getElementById("regEmail");
+    const regPw           = document.getElementById("regPassword");
+    const btnRegister     = document.getElementById("btnRegister");
+    const btnLogout       = document.getElementById("btnLogout");
+    const userNameEl      = document.getElementById("userName");
+    const chatWindow      = document.getElementById("chatWindow");
+    const messageIn       = document.getElementById("messageInput");
+    const sendBtn         = document.getElementById("sendBtn");
+    const oveIndicator    = document.getElementById("oveIndicator");
+    const typingIndicator = document.getElementById("typingIndicator");
 
-    let chatUnsub     = null;
-    let presenceUnsub = null;
-    let presenceRef   = null;
-    let isOveActive   = false;
+    let chatUnsub, presenceUnsub, presenceRef;
+    let isOveActive = false;
 
-    // Visa ett meddelande i chatten
-    function appendMessage(role, text) {
-      const div = document.createElement("div");
-      div.classList.add("message", role);
-      div.textContent = text;
-      chatWindow.append(div);
-      chatWindow.scrollTop = chatWindow.scrollHeight;
-    }
+    // ===== Tabs =====
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        tabs.forEach(t => t.classList.remove("active"));
+        tabContents.forEach(c => c.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById(tab.dataset.tab).classList.add("active");
+      });
+    });
 
-    // Registera nytt konto
-    btnReg.addEventListener("click", async () => {
+    // ===== Auth handlers =====
+    btnRegister.addEventListener("click", async () => {
       try {
         const cred = await createUserWithEmailAndPassword(auth, regEm.value, regPw.value);
         await updateProfile(cred.user, { displayName: regDn.value });
@@ -141,7 +261,6 @@
       }
     });
 
-    // Logga in (e-post eller visningsnamn)
     btnLogin.addEventListener("click", async () => {
       try {
         let email = loginId.value.trim();
@@ -157,51 +276,52 @@
       }
     });
 
-    // Logga ut
     btnLogout.addEventListener("click", () => signOut(auth));
 
-    // Auth-state-changed
+    // ===== Chat & presence =====
     onAuthStateChanged(auth, user => {
       if (user) {
-        // Global presence-ref för Ove
+        // presence-ref
         presenceRef = doc(db, "presence", "ove");
         if (presenceUnsub) presenceUnsub();
         presenceUnsub = onSnapshot(presenceRef, snap => {
-          const data      = snap.exists() ? snap.data() : {};
-          isOveActive     = !!data.active;
-          const isTyping  = !!data.typing;
-          // online/offline
-          oveIndicator.textContent = isOveActive ? "Online" : "Offline";
-          oveIndicator.classList.toggle("online", isOveActive);
-          oveIndicator.classList.toggle("offline", !isOveActive);
-          // typing-indicator
-          typingIndicator.classList.toggle("hidden", !isTyping);
+          const d = snap.exists() ? snap.data() : {};
+          isOveActive = !!d.active;
+          oveIndicator.textContent = d.active ? "Online" : "Offline";
+          oveIndicator.classList.toggle("online", d.active);
+          oveIndicator.classList.toggle("offline", !d.active);
+          typingIndicator.classList.toggle("hidden", !d.typing);
         });
 
-        // Visa chat UI
+        // show chat
         authUI.classList.add("hidden");
         chatUI.classList.remove("hidden");
         userNameEl.textContent = user.displayName || user.email;
         messageIn.focus();
 
-        // Lyssna på alla meddelanden
+        // listen messages
         const msgsQ = query(collection(db, "messages"), orderBy("timestamp"));
         if (chatUnsub) chatUnsub();
         chatUnsub = onSnapshot(msgsQ, snap => {
-          chatWindow.textContent = "";
-          snap.forEach(d => appendMessage(d.data().role, d.data().content));
+          chatWindow.innerHTML = "";
+          snap.forEach(d => {
+            const { role, content } = d.data();
+            const div = document.createElement("div");
+            div.className = "message " + role;
+            div.textContent = content;
+            chatWindow.append(div);
+          });
+          chatWindow.scrollTop = chatWindow.scrollHeight;
         });
-
       } else {
-        // Tillbaka till autentisering
-        if (chatUnsub)     chatUnsub();
+        if (chatUnsub) chatUnsub();
         if (presenceUnsub) presenceUnsub();
-        authUI.classList.remove("hidden");
         chatUI.classList.add("hidden");
+        authUI.classList.remove("hidden");
       }
     });
 
-    // Skicka meddelande (knapp eller Enter)
+    // ===== Send message =====
     sendBtn.addEventListener("click", sendMessage);
     messageIn.addEventListener("keydown", e => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -216,65 +336,42 @@
       const user = auth.currentUser;
       if (!user) return alert("Du måste vara inloggad!");
 
-      // Om användaren skriver "ove" → sätt Ove online (utan typing)
+      // clear input immediately
+      messageIn.value = "";
+      messageIn.focus();
+
+      // if contains "ove" → online
       if (text.toLowerCase().includes("ove") && presenceRef) {
-        await setDoc(presenceRef, {
-          active:  true,
-          typing:  false,
-          timestamp: serverTimestamp()
-        });
+        await setDoc(presenceRef, { active: true, typing: false, timestamp: serverTimestamp() });
       }
 
-      // Spara användarens meddelande globalt
+      // save user msg
       await addDoc(collection(db, "messages"), {
         role:      "user",
         content:   text,
-        userId:    user.uid,
         timestamp: serverTimestamp()
       });
 
-      // Om Ove är online → visa typing, anropa API, spara svaret
+      // only call API if Ove online
       if (isOveActive && presenceRef) {
-        // visa "Ove skriver..."
-        await updateDoc(presenceRef, {
-          typing:    true,
-          timestamp: serverTimestamp()
-        });
-
-        // anropa serverless-funktion
+        await updateDoc(presenceRef, { typing: true, timestamp: serverTimestamp() });
         const res  = await fetch("/api/anthropic", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: text, history: [] })
         });
         const data = await res.json();
-
-        // spara Oves svar
         await addDoc(collection(db, "messages"), {
           role:      "assistant",
           content:   data.reply,
           timestamp: serverTimestamp()
         });
-
-        // göm typing-indicator
-        await updateDoc(presenceRef, {
-          typing:    false,
-          timestamp: serverTimestamp()
-        });
-
-        // om Ove avslutar → sätt offline
+        await updateDoc(presenceRef, { typing: false, timestamp: serverTimestamp() });
         const r = data.reply.toLowerCase();
-        if (r.includes("hejdå") || r.includes("tröttnat")) {
-          await setDoc(presenceRef, {
-            active:  false,
-            typing:  false,
-            timestamp: serverTimestamp()
-          });
+        if ((r.includes("hejdå")||r.includes("tröttnat")) && presenceRef) {
+          await setDoc(presenceRef, { active: false, typing: false, timestamp: serverTimestamp() });
         }
       }
-
-      messageIn.value = "";
-      messageIn.focus();
     }
   </script>
 </body>
