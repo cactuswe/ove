@@ -1,5 +1,6 @@
 # api/anthropic.py
 import json, os, traceback, requests
+from http.server import BaseHTTPRequestHandler
 
 SYSTEM_PROMPT = """
 Du är Ove. En MÄNNISKA! Prata ALDRIG om dig själv i tredje person. 
@@ -16,59 +17,69 @@ DU FÅR BARA SKRIVA AVSLUTNINGS FRASERNA OM DU VERKLIGEN INTE VILL PRATA LÄNGRE
 """.strip()
 
 
-def handler(request):
-    if request.method != "POST":
-        return {
-            "statusCode": 405,
-            "headers": {"Allow": "POST"},
-            "body": json.dumps({"error": "Method Not Allowed"})
-        }
+class handler(BaseHTTPRequestHandler):
+    def _send(self, code: int, payload: dict):
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(payload).encode())
 
-    try:
-        data = json.loads(request.body or "{}")
-    except Exception:
-        return {"statusCode": 400, "body": json.dumps({"error": "Invalid JSON"})}
+    # Vercel ropar antingen do_GET eller do_POST beroende på metod
+    def do_POST(self):
+        try:
+            length = int(self.headers.get("content-length", 0))
+            body   = self.rfile.read(length).decode()
+            data   = json.loads(body or "{}")
+        except Exception:
+            self._send(400, {"error": "Invalid JSON"})
+            return
 
-    message = data.get("message", "").strip()
-    history = data.get("history", [])
-    if not message:
-        return {"statusCode": 400, "body": json.dumps({"error": "Missing or invalid 'message' field"})}
-    if not isinstance(history, list):
-        return {"statusCode": 400, "body": json.dumps({"error": "'history' must be an array"})}
+        message = data.get("message", "").strip()
+        history = data.get("history", [])
 
-    conv_lines = [
-        f"{'Ove' if m.get('role') == 'assistant' else 'Användare'}: {m.get('content','')}"
-        for m in history
-    ]
-    prompt = (
-        SYSTEM_PROMPT
-        + "\n\n"
-        + "\n".join(conv_lines)
-        + f"\nAnvändare: {message}\nOve:"
-    )
+        if not message:
+            self._send(400, {"error": "Missing or empty 'message'"})
+            return
+        if not isinstance(history, list):
+            self._send(400, {"error": "'history' must be an array"})
+            return
 
-    try:
-        resp = requests.post(
-            "https://api.anthropic.com/v1/complete",
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": os.getenv("ANTHROPIC_API_KEY", ""),
-            },
-            json={"model": "claude-3", "prompt": prompt, "max_tokens_to_sample": 300},
-            timeout=30,
+        conv_lines = [
+            f"{'Ove' if m.get('role') == 'assistant' else 'Användare'}: {m.get('content','')}"
+            for m in history
+        ]
+        prompt = (
+            SYSTEM_PROMPT
+            + "\n\n"
+            + "\n".join(conv_lines)
+            + f"\nAnvändare: {message}\nOve:"
         )
-    except Exception as err:
-        traceback.print_exc()
-        return {"statusCode": 500, "body": json.dumps({"error": str(err)})}
 
-    if not resp.ok:
-        return {"statusCode": resp.status_code, "body": json.dumps({"error": resp.text})}
+        try:
+            # OBS! Nyare endpoint + modellnamn
+            resp = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "content-type": "application/json",
+                    "x-api-key": os.getenv("ANTHROPIC_API_KEY", ""),
+                },
+                json={
+                    "model": "claude-3-haiku-latest",
+                    "max_tokens": 300,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                timeout=30,
+            )
+            resp.raise_for_status()
+            completion = resp.json()["content"][0]["text"].strip()
+            self._send(200, {"reply": completion})
+        except Exception as err:
+            traceback.print_exc()
+            self._send(500, {"error": str(err)})
 
-    completion = resp.json().get("completion")
-    if not isinstance(completion, str):
-        return {"statusCode": 502, "body": json.dumps({"error": "Invalid response from Anthropic"})}
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps({"reply": completion.strip()})
-    }
+    # Svara 405 på allt utom POST
+    def do_GET(self):
+        self.send_response(405)
+        self.send_header("Allow", "POST")
+        self.end_headers()
+handler är nu en klass → issubclass() blir sant 
