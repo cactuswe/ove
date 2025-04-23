@@ -11,7 +11,7 @@ import {
   getFirestore,
   doc,
   setDoc,
-  getDocs,
+  getDoc,
   updateDoc,
   collection,
   addDoc,
@@ -22,7 +22,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-// --- Initiera Firebase ---
+// --- Init Firebase ---
 const firebaseConfig = {
   apiKey: "AIzaSyBRMtuyLiyRfWwq1p3e_dSE83Z7sBYJM3I",
   authDomain: "ove-ai.firebaseapp.com",
@@ -36,7 +36,7 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-// --- Referenser & state ---
+// --- State & refs ---
 const tabs            = document.querySelectorAll(".tab");
 const tabContents     = document.querySelectorAll(".tab-content");
 const authUI          = document.getElementById("authUI");
@@ -56,18 +56,17 @@ const chatWindow      = document.getElementById("chatWindow");
 const messageIn       = document.getElementById("messageInput");
 const sendBtn         = document.getElementById("sendBtn");
 const ovePeek         = document.getElementById("ovePeek");
+const typingIndicator = document.getElementById("typingIndicator");
 const statusBarEl     = document.getElementById("statusBar");
 
 let chatUnsub, presenceUnsub, presenceRef;
 let isOveActive = false;
 
-// För att hålla konversationen
+// Sammanhangshantering
 let chatHistory = [];
 let chatSummary = "";
 
-/**
- * Sammanfattar meddelanden för att hålla prompten kort.
- */
+// Summeringsfunktion
 async function summarizeMessages(messages, previousSummary = "") {
   let prompt = "Sammanfatta följande konversation på max 60 ord:\n";
   if (previousSummary) {
@@ -75,7 +74,7 @@ async function summarizeMessages(messages, previousSummary = "") {
   }
   messages.forEach(m => {
     const who = m.role === "assistant" ? "Ove" : "Användare";
-    prompt += `${who}: ${m.content}\n`;
+    prompt += ${who}: ${m.content}\n;
   });
   const res = await fetch("/api/anthropic", {
     method: "POST",
@@ -86,9 +85,7 @@ async function summarizeMessages(messages, previousSummary = "") {
   return data.reply.trim();
 }
 
-/**
- * Lägger in ett meddelande i chat-fönstret.
- */
+// Lägg in meddelande
 function appendMessage(role, text) {
   const div = document.createElement("div");
   div.className = "message " + role;
@@ -97,7 +94,7 @@ function appendMessage(role, text) {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-// ======== TAB-switch ========
+// Tab-switch
 tabs.forEach(tab => {
   tab.addEventListener("click", () => {
     tabs.forEach(t => t.classList.remove("active"));
@@ -107,7 +104,7 @@ tabs.forEach(tab => {
   });
 });
 
-// ======== Form-submit kopplar till knappar ========
+// Kör login när formulär submit
 loginForm.addEventListener("submit", e => {
   e.preventDefault();
   btnLogin.click();
@@ -117,7 +114,7 @@ registerForm.addEventListener("submit", e => {
   btnRegister.click();
 });
 
-// ======== Auth: Registrera ========
+// ===== Auth =====
 btnRegister.addEventListener("click", async () => {
   try {
     const cred = await createUserWithEmailAndPassword(auth, regEm.value, regPw.value);
@@ -131,16 +128,14 @@ btnRegister.addEventListener("click", async () => {
   }
 });
 
-// ======== Auth: Logga in ========
 btnLogin.addEventListener("click", async () => {
   try {
     let email = loginId.value.trim();
-    // Om användaren anger visningsnamn istället för e-post
     if (email && !/@/.test(email)) {
       const q    = query(collection(db, "users"), where("displayName", "==", email));
-      const snap = await getDocs(q);
-      if (!snap.docs.length) throw new Error("Ingen användare med det visningsnamnet");
-      email = snap.docs[0].data().email;
+      const snap = await (await getDoc(q)).docs;
+      if (!snap.length) throw new Error("Ingen användare med det visningsnamnet");
+      email = snap[0].data().email;
     }
     await signInWithEmailAndPassword(auth, email, loginPw.value);
   } catch (e) {
@@ -148,42 +143,37 @@ btnLogin.addEventListener("click", async () => {
   }
 });
 
-// ======== Auth: Logga ut ========
 btnLogout.addEventListener("click", () => signOut(auth));
 
-// ======== När auth-state ändras ========
+// ===== Chat & Presence =====
 onAuthStateChanged(auth, user => {
   if (user) {
-    // Sätt upp närvaro för Ove
+    // prenumerera på närvaro
     presenceRef = doc(db, "presence", "ove");
     if (presenceUnsub) presenceUnsub();
     presenceUnsub = onSnapshot(presenceRef, snap => {
       const d = snap.exists() ? snap.data() : {};
       isOveActive = !!d.active;
-      // Väck Ove (peek-cirkel)
+      // peek-cirkeln
       ovePeek.classList.toggle("hidden", !d.active);
-      // Visa/dölj skrivindikatorn
-      statusBarEl.classList.toggle("hidden", !d.typing);
+      // typing-animation
+      // typingIndicator.classList.toggle("hidden", !d.typing);
+        statusBarEl.classList.toggle("hidden", !d.typing);
     });
 
-    // Visa chat
     authUI.classList.add("hidden");
     chatUI.classList.remove("hidden");
     userNameEl.textContent = user.displayName || user.email;
     messageIn.focus();
 
-    // Lyssna på alla meddelanden
+    const msgsQ = query(collection(db, "messages"), orderBy("timestamp"));
     if (chatUnsub) chatUnsub();
-    chatUnsub = onSnapshot(
-      query(collection(db, "messages"), orderBy("timestamp")),
-      snap => {
-        chatWindow.innerHTML = "";
-        snap.forEach(d => appendMessage(d.data().role, d.data().content));
-      }
-    );
+    chatUnsub = onSnapshot(msgsQ, snap => {
+      chatWindow.innerHTML = "";
+      snap.forEach(d => appendMessage(d.data().role, d.data().content));
+    });
 
   } else {
-    // Rensa lyssnare och visa auth-UI
     if (chatUnsub)     chatUnsub();
     if (presenceUnsub) presenceUnsub();
     chatUI.classList.add("hidden");
@@ -191,7 +181,7 @@ onAuthStateChanged(auth, user => {
   }
 });
 
-// ======== Skicka meddelande ========
+// ===== Skicka meddelande =====
 sendBtn.addEventListener("click", sendMessage);
 messageIn.addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) {
@@ -204,7 +194,7 @@ async function sendMessage() {
   const text = messageIn.value.trim();
   if (!text) return;
 
-  // Väck Ove om han nämns
+  // väck Ove om nämnt
   if (presenceRef && text.toLowerCase().includes("ove")) {
     await setDoc(presenceRef, {
       active:    true,
@@ -213,24 +203,21 @@ async function sendMessage() {
     });
   }
 
-  // Töm inputfältet
   messageIn.value = "";
   messageIn.focus();
 
   const user = auth.currentUser;
   if (!user) return alert("Du måste vara inloggad!");
 
-  // Lägg till i lokal historik
+  // historik & sammanfattning
   chatHistory.push({ role: "user", content: text });
-
-  // Om historiken blir för lång, summera de äldsta
   if (chatHistory.length > 8) {
-    const toSummarize = chatHistory.slice(0, chatHistory.length - 4);
-    chatSummary = await summarizeMessages(toSummarize, chatSummary);
+    const toSum = chatHistory.slice(0, chatHistory.length - 4);
+    chatSummary = await summarizeMessages(toSum, chatSummary);
     chatHistory = chatHistory.slice(chatHistory.length - 4);
   }
 
-  // Bygg prompt med sammanfattning + färsk kontext
+  // bygg prompt
   let prompt = "";
   if (chatSummary) {
     prompt += "Tidigare sammanfattning:\n" + chatSummary + "\n---\n";
@@ -238,21 +225,20 @@ async function sendMessage() {
   prompt += "Senaste meddelanden:\n";
   chatHistory.forEach(m => {
     const who = m.role === "assistant" ? "Ove" : "Användare";
-    prompt += `${who}: ${m.content}\n`;
+    prompt += ${who}: ${m.content}\n;
   });
   prompt += "Ovan är kontexten. Svara nu på: " + text;
 
-  // Spara användarens meddelande i Firestore
+  // spara user msg
   await addDoc(collection(db, "messages"), {
     role:      "user",
     content:   text,
     timestamp: serverTimestamp()
   });
 
-  // Om Ove är online: visa skrivindikator, anropa API, spara svar
+  // anropa Ove om online
   if (isOveActive && presenceRef) {
     await updateDoc(presenceRef, { typing: true, timestamp: serverTimestamp() });
-
     const res  = await fetch("/api/anthropic", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -267,13 +253,9 @@ async function sendMessage() {
       timestamp: serverTimestamp()
     });
 
-    // Lägg till Oves svar i lokal historik
     chatHistory.push({ role: "assistant", content: reply });
-
-    // Dölj skrivindikator
     await updateDoc(presenceRef, { typing: false, timestamp: serverTimestamp() });
-
-    // Om Ove avslutar konversationen, sätt offline
+    // stäng av om bye
     if (reply.toLowerCase().includes("hejdå") || reply.toLowerCase().includes("tröttnat")) {
       await setDoc(presenceRef, {
         active:    false,
