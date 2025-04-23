@@ -66,6 +66,16 @@ let isOveActive = false;
 let chatHistory = [];
 let chatSummary = "";
 
+onSnapshot(presenceRef, snap => {
+  const d = snap.exists() ? snap.data() : {};
+  isOveActive = !!d.active;
+
+  ovePeek.classList.toggle("hidden", !d.active);
+
+  // Visa/dölj hela bubbla‐containern utanför chatWindow
+  statusBarEl.classList.toggle("hidden", !d.typing);
+});
+
 // Summeringsfunktion
 async function summarizeMessages(messages, previousSummary = "") {
   let prompt = "Sammanfatta följande konversation på max 60 ord:\n";
@@ -158,15 +168,6 @@ onAuthStateChanged(auth, user => {
       ovePeek.classList.toggle("hidden", !d.active);
       // typing-animation
       // typingIndicator.classList.toggle("hidden", !d.typing);
-      onSnapshot(presenceRef, snap => {
-      const d = snap.exists() ? snap.data() : {};
-      isOveActive = !!d.active;
-      
-      ovePeek.classList.toggle("hidden", !d.active);
-      
-      // Visa/dölj hela bubbla‐containern utanför chatWindow
-      statusBarEl.classList.toggle("hidden", !d.typing);
-});
     });
 
     authUI.classList.add("hidden");
