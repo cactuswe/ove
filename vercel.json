@@ -6,6 +6,6 @@
     { "src": "app.js",    "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/(.*)", "dest": "/index.html" }   // SPA-rewrite
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
