@@ -9,8 +9,49 @@
 </head>
 <body>
   <main>
-    <!-- AUTH… oförändrat … -->
+    <!-- AUTH -->
+    <div id="authUI">
+      <div class="tabs">
+        <div class="tab active" data-tab="login">
+          <i class="material-icons">login</i> Logga in
+        </div>
+        <div class="tab" data-tab="register">
+          <i class="material-icons">person_add</i> Registrera
+        </div>
+      </div>
 
+      <form id="loginForm" class="tab-content active">
+        <div class="form-group">
+          <label for="loginId"><i class="material-icons">account_circle</i> Visningsnamn eller e-post</label>
+          <input id="loginId" name="loginId" type="text" required />
+        </div>
+        <div class="form-group">
+          <label for="loginPassword"><i class="material-icons">lock</i> Lösenord</label>
+          <input id="loginPassword" name="loginPassword" type="password" required />
+        </div>
+        <button type="submit" id="btnLogin" class="btn">
+          <i class="material-icons">arrow_forward</i> Logga in
+        </button>
+      </form>
+
+      <form id="registerForm" class="tab-content">
+        <div class="form-group">
+          <label for="regDisplayName"><i class="material-icons">badge</i> Visningsnamn</label>
+          <input id="regDisplayName" name="regDisplayName" type="text" required />
+        </div>
+        <div class="form-group">
+          <label for="regEmail"><i class="material-icons">email</i> E-post</label>
+          <input id="regEmail" name="regEmail" type="email" required />
+        </div>
+        <div class="form-group">
+          <label for="regPassword"><i class="material-icons">lock</i> Lösenord</label>
+          <input id="regPassword" name="regPassword" type="password" required />
+        </div>
+        <button type="submit" id="btnRegister" class="btn">
+          <i class="material-icons">person_add</i> Registrera
+        </button>
+      </form>
+    </div>
     <!-- CHAT -->
     <div id="chatUI" class="hidden">
       <div id="chat-header">
