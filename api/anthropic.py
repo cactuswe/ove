@@ -1,4 +1,4 @@
-	# api/anthropic.py
+# api/anthropic.py
 import json, os, traceback, requests
 from http.server import BaseHTTPRequestHandler
 
@@ -24,71 +24,56 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(payload).encode())
 
-    # Vercel ropar antingen do_GET eller do_POST beroende på metod
     def do_POST(self):
         try:
             length = int(self.headers.get("content-length", 0))
-            body   = self.rfile.read(length).decode()
-            data   = json.loads(body or "{}")
-        except Exception:
-            self._send(400, {"error": "Invalid JSON"})
-            return
+            body = self.rfile.read(length).decode()
+            data = json.loads(body or "{}")
 
-        message = data.get("message", "").strip()
-        history = data.get("history", [])
+            message = data.get("message", "").strip()
+            history = data.get("history", [])
+            if not message:
+                return self._send(400, {"error": "Missing 'message'"})
+            if not isinstance(history, list):
+                return self._send(400, {"error": "'history' must be an array"})
 
-        if not message:
-            self._send(400, {"error": "Missing or empty 'message'"})
-            return
-        if not isinstance(history, list):
-            self._send(400, {"error": "'history' must be an array"})
-            return
+            conv_lines = [
+                f"{'Ove' if m.get('role') == 'assistant' else 'Användare'}: {m.get('content','')}"
+                for m in history
+            ]
+            prompt = (
+                SYSTEM_PROMPT + "\n\n" +
+                "\n".join(conv_lines) +
+                f"\nAnvändare: {message}\nOve:"
+            )
 
-        conv_lines = [
-            f"{'Ove' if m.get('role') == 'assistant' else 'Användare'}: {m.get('content','')}"
-            for m in history
-        ]
-        prompt = (
-            SYSTEM_PROMPT
-            + "\n\n"
-            + "\n".join(conv_lines)
-            + f"\nAnvändare: {message}\nOve:"
-        )
-
-        try:
-            # OBS! Nyare endpoint + modellnamn
             resp = requests.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
                     "content-type": "application/json",
-                    "x-api-key": os.getenv("ANTHROPIC_API_KEY")
+                    "x-api-key": os.getenv("ANTHROPIC_API_KEY", "")
                 },
                 json={
                     "model": "claude-3-haiku-20240307",
                     "max_tokens": 300,
-                    "messages": [
-                        { "role": "user", "content": prompt }
-                    ]
+                    "messages": [{"role": "user", "content": prompt}]
                 },
                 timeout=30
             )
-            resp.raise_for_status()
-            completion = resp.json()["content"][0]["text"]
+
+            if not resp.ok:
+                try:
+                    return self._send(resp.status_code, resp.json())
+                except Exception:
+                    return self._send(resp.status_code, {"error": resp.text})
+
+            completion = resp.json()["content"][0]["text"].strip()
             self._send(200, {"reply": completion})
+
         except Exception as err:
             traceback.print_exc()
             self._send(500, {"error": str(err)})
-	try:
-	    resp.raise_for_status()
-	except requests.exceptions.HTTPError:
-	    try:
-	        err_json = resp.json()
-	    except:
-	        err_json = {"error": resp.text}
-	    self._send(resp.status_code, err_json)
-	    return
 
-    # Svara 405 på allt utom POST
     def do_GET(self):
         self.send_response(405)
         self.send_header("Allow", "POST")
