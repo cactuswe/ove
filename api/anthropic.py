@@ -1,4 +1,4 @@
-# api/anthropic.py
+	# api/anthropic.py
 import json, os, traceback, requests
 from http.server import BaseHTTPRequestHandler
 
@@ -61,14 +61,16 @@ class handler(BaseHTTPRequestHandler):
                 "https://api.anthropic.com/v1/messages",
                 headers={
                     "content-type": "application/json",
-                    "x-api-key": os.getenv("ANTHROPIC_API_KEY", ""),
+                    "x-api-key": os.getenv("ANTHROPIC_API_KEY")
                 },
                 json={
-                    "model": "claude-3-haiku-latest",
+                    "model": "claude-3-haiku-20240307",
                     "max_tokens": 300,
-                    "messages": [{"role": "user", "content": prompt}],
+                    "messages": [
+                        { "role": "user", "content": prompt }
+                    ]
                 },
-                timeout=30,
+                timeout=30
             )
             resp.raise_for_status()
             completion = resp.json()["content"][0]["text"].strip()
