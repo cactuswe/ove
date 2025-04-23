@@ -208,6 +208,12 @@ async function sendMessage(){
 
     const r=await fetch("/api/anthropic",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:prompt})});
     const d=await r.json();
+    if (!d.reply) {
+      alert("Ove kunde inte svara:\n" + (d.error || "okänt fel"));
+      return;
+    }
+
+    
     const reply=d.reply.trim();
 
     typingBubble.remove();
