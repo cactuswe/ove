@@ -55,7 +55,7 @@ class handler(BaseHTTPRequestHandler):
                     "anthropic-version": "2023-06-01"
                 },
                 json={
-                    "model": "claude-3-haiku-20230601",
+                    "model": "claude-3-haiku-latest",
                     "max_tokens": 300,
                     "messages": [{"role": "user", "content": prompt}]
                 },
