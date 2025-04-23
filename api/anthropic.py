@@ -51,7 +51,8 @@ class handler(BaseHTTPRequestHandler):
                 "https://api.anthropic.com/v1/messages",
                 headers={
                     "content-type": "application/json",
-                    "x-api-key": os.getenv("ANTHROPIC_API_KEY", "")
+                    "x-api-key": os.getenv("ANTHROPIC_API_KEY", ""),
+                    "anthropic-version": "2023-06-01"
                 },
                 json={
                     "model": "claude-3-haiku-20230601",
