@@ -158,7 +158,15 @@ onAuthStateChanged(auth, user => {
       ovePeek.classList.toggle("hidden", !d.active);
       // typing-animation
       // typingIndicator.classList.toggle("hidden", !d.typing);
-        statusBarEl.classList.toggle("hidden", !d.typing);
+      onSnapshot(presenceRef, snap => {
+      const d = snap.exists() ? snap.data() : {};
+      isOveActive = !!d.active;
+      
+      ovePeek.classList.toggle("hidden", !d.active);
+      
+      // Visa/dölj hela bubbla‐containern utanför chatWindow
+      statusBarEl.classList.toggle("hidden", !d.typing);
+});
     });
 
     authUI.classList.add("hidden");
