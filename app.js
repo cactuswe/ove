@@ -207,13 +207,13 @@ async function sendMessage(){
     await updateDoc(presenceRef,{typing:true,timestamp:serverTimestamp()});
 
     const r=await fetch("/api/anthropic",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:prompt})});
-    const d=await r.json();
+    const d = await r.json();
+    console.log("🛠️ /api/anthropic response:", d);
     if (!d.reply) {
-      alert("Ove kunde inte svara:\n" + (d.error || "okänt fel"));
+      alert("Ove kunde inte svara:\n" + JSON.stringify(d, null, 2));
       return;
     }
 
-    
     const reply=d.reply.trim();
 
     typingBubble.remove();
