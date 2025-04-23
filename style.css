@@ -99,46 +99,33 @@ main {
   margin-right:auto; border:1px solid var(--border);
 }
 
-/* CHAT WINDOW */
-#chatWindow {
-  flex: 1;
-  padding: 1rem;
-  overflow-y: auto;
-  background: var(--bg);
-}
-
-/* TYPING‐BUBBLE UTANFÖR scrollen */
+/* ===== TYPING-BUBBLE ===== */
 .typing-bubble {
   display: flex;
   align-items: center;
   padding: 0.5rem 0.75rem;
-  margin: 0 1rem 0.5rem 1rem;
+  margin-bottom: 0.75rem;
   max-width: 60%;
   border-radius: 12px 12px 12px 0;
   background: var(--surface);
   border: 1px solid var(--border);
 }
+
 .typing-bubble.hidden {
   display: none !important;
 }
-
-/* tre‐pricks‐animation … */
 .typing {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
+  display:flex; gap:4px; margin-left:auto;
 }
 .typing span {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--muted);
-  animation: blink 1s infinite;
+  width:8px; height:8px; border-radius:50%;
+  background:var(--muted); animation:blink 1s infinite;
 }
-.typing span:nth-child(2) { animation-delay: .2s; }
-.typing span:nth-child(3) { animation-delay: .4s; }
+.typing span:nth-child(2) { animation-delay:.2s; }
+.typing span:nth-child(3) { animation-delay:.4s; }
 @keyframes blink {
-  0%,80%,100% { opacity: 0; }
-  40% { opacity: 1; }
+  0%,80%,100% { opacity:0; }
+  40% { opacity:1; }
 }
 
 /* ===== PEEK ===== */
