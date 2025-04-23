@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chat med Ove (Claude 3)</title>
+
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+
+  <!-- Egen styling -->
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,52 +16,81 @@
     <!-- AUTH -->
     <div id="authUI">
       <div class="tabs">
-        <div class="tab active" data-tab="login">Logga in</div>
-        <div class="tab" data-tab="register">Registrera</div>
+        <div class="tab active" data-tab="login">
+          <i class="material-icons">login</i> Logga in
+        </div>
+        <div class="tab" data-tab="register">
+          <i class="material-icons">person_add</i> Registrera
+        </div>
       </div>
       <div id="login" class="tab-content active">
         <div class="form-group">
-          <label for="loginId">Visningsnamn eller e-post</label>
+          <label for="loginId">
+            <i class="material-icons">account_circle</i> Visningsnamn eller e-post
+          </label>
           <input id="loginId" type="text" />
         </div>
         <div class="form-group">
-          <label for="loginPassword">Lösenord</label>
+          <label for="loginPassword">
+            <i class="material-icons">lock</i> Lösenord
+          </label>
           <input id="loginPassword" type="password" />
         </div>
-        <button id="btnLogin" class="btn">Logga in</button>
+        <button id="btnLogin" class="btn">
+          <i class="material-icons">arrow_forward</i> Logga in
+        </button>
       </div>
       <div id="register" class="tab-content">
         <div class="form-group">
-          <label for="regDisplayName">Visningsnamn</label>
+          <label for="regDisplayName">
+            <i class="material-icons">badge</i> Visningsnamn
+          </label>
           <input id="regDisplayName" type="text" />
         </div>
         <div class="form-group">
-          <label for="regEmail">E-post</label>
+          <label for="regEmail">
+            <i class="material-icons">email</i> E-post
+          </label>
           <input id="regEmail" type="email" />
         </div>
         <div class="form-group">
-          <label for="regPassword">Lösenord</label>
+          <label for="regPassword">
+            <i class="material-icons">lock</i> Lösenord
+          </label>
           <input id="regPassword" type="password" />
         </div>
-        <button id="btnRegister" class="btn">Registrera</button>
+        <button id="btnRegister" class="btn">
+          <i class="material-icons">person_add</i> Registrera
+        </button>
       </div>
     </div>
 
     <!-- CHAT -->
     <div id="chatUI" class="hidden">
       <div id="chat-header">
-        <div>Inloggad som <strong><span id="userName"></span></strong></div>
-        <button id="btnLogout" class="btn logout">Logga ut</button>
+        <div>
+          <i class="material-icons">person</i>
+          Inloggad som <strong><span id="userName"></span></strong>
+        </div>
+        <button id="btnLogout" class="btn logout">
+          <i class="material-icons">logout</i>
+        </button>
       </div>
       <div id="chatWindow"></div>
       <div id="statusBar">
+        <i class="material-icons">android</i>
+        <span class="circle hidden" id="oveCircle"></span>
         <strong>Ove:</strong>
         <span id="oveIndicator" class="indicator offline">Offline</span>
-        <span id="typingIndicator" class="indicator hidden">Ove skriver…</span>
+        <span id="typingIndicator" class="indicator hidden">
+          <i class="material-icons">autorenew</i> Ove skriver…
+        </span>
       </div>
       <div id="input-area">
         <textarea id="messageInput" rows="2" placeholder="Skriv ditt meddelande…"></textarea>
-        <button id="sendBtn" class="btn">Skicka</button>
+        <button id="sendBtn" class="btn">
+          <i class="material-icons">send</i>
+        </button>
       </div>
     </div>
   </main>
