@@ -73,7 +73,7 @@ class handler(BaseHTTPRequestHandler):
                 timeout=30
             )
             resp.raise_for_status()
-            completion = resp.json()["content"][0]["text"].strip()
+            completion = resp.json()["content"][0]["text"]
             self._send(200, {"reply": completion})
         except Exception as err:
             traceback.print_exc()
