@@ -1,3 +1,6 @@
+/* app.js -------------------------------------------------------- */
+
+/* ---------- Firebase-SDK-importer ---------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import {
   getAuth,
@@ -12,6 +15,7 @@ import {
   doc,
   setDoc,
   getDoc,
+  getDocs,                  // <— NY!
   updateDoc,
   collection,
   addDoc,
@@ -22,21 +26,21 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-// --- Init Firebase ---
+/* ---------- Init Firebase ---------- */
 const firebaseConfig = {
-  apiKey: "AIzaSyBRMtuyLiyRfWwq1p3e_dSE83Z7sBYJM3I",
-  authDomain: "ove-ai.firebaseapp.com",
-  projectId: "ove-ai",
-  storageBucket: "ove-ai.firebasestorage.app",
+  apiKey:            "AIzaSyBRMtuyLiyRfWwq1p3e_dSE83Z7sBYJM3I",
+  authDomain:        "ove-ai.firebaseapp.com",
+  projectId:         "ove-ai",
+  storageBucket:     "ove-ai.firebasestorage.app",
   messagingSenderId: "200723689801",
-  appId: "1:200723689801:web:5dbedb16f582048081ea98",
-  measurementId: "G-PEZM6B3N58"
+  appId:             "1:200723689801:web:5dbedb16f582048081ea98",
+  measurementId:     "G-PEZM6B3N58"
 };
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-// --- State & refs ---
+/* ---------- DOM-refs ---------- */
 const tabs            = document.querySelectorAll(".tab");
 const tabContents     = document.querySelectorAll(".tab-content");
 const authUI          = document.getElementById("authUI");
@@ -62,11 +66,11 @@ const statusBarEl     = document.getElementById("statusBar");
 let chatUnsub, presenceUnsub, presenceRef;
 let isOveActive = false;
 
-// Sammanhangshantering
+/* ---------- Kontext-state ---------- */
 let chatHistory = [];
 let chatSummary = "";
 
-// Summeringsfunktion
+/* ---------- Summerings-funktion ---------- */
 async function summarizeMessages(messages, previousSummary = "") {
   let prompt = "Sammanfatta följande konversation på max 60 ord:\n";
   if (previousSummary) {
@@ -74,27 +78,27 @@ async function summarizeMessages(messages, previousSummary = "") {
   }
   messages.forEach(m => {
     const who = m.role === "assistant" ? "Ove" : "Användare";
-    prompt += ${who}: ${m.content}\n;
+    prompt += `${who}: ${m.content}\n`;
   });
   const res = await fetch("/api/anthropic", {
-    method: "POST",
+    method:  "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: prompt })
+    body:    JSON.stringify({ message: prompt })
   });
   const data = await res.json();
   return data.reply.trim();
 }
 
-// Lägg in meddelande
+/* ---------- Chat-UI-helpers ---------- */
 function appendMessage(role, text) {
-  const div = document.createElement("div");
-  div.className = "message " + role;
+  const div       = document.createElement("div");
+  div.className   = "message " + role;
   div.textContent = text;
   chatWindow.append(div);
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-// Tab-switch
+/* ---------- Tab-växling ---------- */
 tabs.forEach(tab => {
   tab.addEventListener("click", () => {
     tabs.forEach(t => t.classList.remove("active"));
@@ -104,24 +108,18 @@ tabs.forEach(tab => {
   });
 });
 
-// Kör login när formulär submit
-loginForm.addEventListener("submit", e => {
-  e.preventDefault();
-  btnLogin.click();
-});
-registerForm.addEventListener("submit", e => {
-  e.preventDefault();
-  btnRegister.click();
-});
+/* ---------- Förhindra formular-reload ---------- */
+loginForm.addEventListener("submit", e => { e.preventDefault(); btnLogin.click(); });
+registerForm.addEventListener("submit", e => { e.preventDefault(); btnRegister.click(); });
 
-// ===== Auth =====
+/* ===================  AUTH  =================== */
 btnRegister.addEventListener("click", async () => {
   try {
     const cred = await createUserWithEmailAndPassword(auth, regEm.value, regPw.value);
     await updateProfile(cred.user, { displayName: regDn.value });
     await setDoc(doc(db, "users", cred.user.uid), {
       displayName: regDn.value,
-      email: cred.user.email
+      email:       cred.user.email
     });
   } catch (e) {
     alert("Registreringsfel: " + e.message);
@@ -131,11 +129,13 @@ btnRegister.addEventListener("click", async () => {
 btnLogin.addEventListener("click", async () => {
   try {
     let email = loginId.value.trim();
+
+    // Tillåt login med visningsnamn
     if (email && !/@/.test(email)) {
       const q    = query(collection(db, "users"), where("displayName", "==", email));
-      const snap = await (await getDoc(q)).docs;
-      if (!snap.length) throw new Error("Ingen användare med det visningsnamnet");
-      email = snap[0].data().email;
+      const snap = await getDocs(q);                      // <— getDocs istället för getDoc
+      if (snap.empty) throw new Error("Ingen användare med det visningsnamnet");
+      email = snap.docs[0].data().email;
     }
     await signInWithEmailAndPassword(auth, email, loginPw.value);
   } catch (e) {
@@ -145,43 +145,42 @@ btnLogin.addEventListener("click", async () => {
 
 btnLogout.addEventListener("click", () => signOut(auth));
 
-// ===== Chat & Presence =====
+/* =================  CHAT & NÄRVARO  ================ */
 onAuthStateChanged(auth, user => {
   if (user) {
-    // prenumerera på närvaro
+    /* --- prenumerera på närvaro --- */
     presenceRef = doc(db, "presence", "ove");
-    if (presenceUnsub) presenceUnsub();
+    presenceUnsub?.();
     presenceUnsub = onSnapshot(presenceRef, snap => {
-      const d = snap.exists() ? snap.data() : {};
-      isOveActive = !!d.active;
-      // peek-cirkeln
+      const d         = snap.exists() ? snap.data() : {};
+      isOveActive     = !!d.active;
       ovePeek.classList.toggle("hidden", !d.active);
-      // typing-animation
-      // typingIndicator.classList.toggle("hidden", !d.typing);
-        statusBarEl.classList.toggle("hidden", !d.typing);
+      statusBarEl.classList.toggle("hidden", !d.typing);
     });
 
+    /* --- visa chatten --- */
     authUI.classList.add("hidden");
     chatUI.classList.remove("hidden");
     userNameEl.textContent = user.displayName || user.email;
     messageIn.focus();
 
+    /* --- prenumerera på alla meddelanden --- */
     const msgsQ = query(collection(db, "messages"), orderBy("timestamp"));
-    if (chatUnsub) chatUnsub();
+    chatUnsub?.();
     chatUnsub = onSnapshot(msgsQ, snap => {
       chatWindow.innerHTML = "";
       snap.forEach(d => appendMessage(d.data().role, d.data().content));
     });
 
   } else {
-    if (chatUnsub)     chatUnsub();
-    if (presenceUnsub) presenceUnsub();
+    chatUnsub?.();
+    presenceUnsub?.();
     chatUI.classList.add("hidden");
     authUI.classList.remove("hidden");
   }
 });
 
-// ===== Skicka meddelande =====
+/* =================  SKICKA MEDDELANDE  ================ */
 sendBtn.addEventListener("click", sendMessage);
 messageIn.addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) {
@@ -194,7 +193,7 @@ async function sendMessage() {
   const text = messageIn.value.trim();
   if (!text) return;
 
-  // väck Ove om nämnt
+  /* --- Väck Ove om han nämns --- */
   if (presenceRef && text.toLowerCase().includes("ove")) {
     await setDoc(presenceRef, {
       active:    true,
@@ -209,42 +208,41 @@ async function sendMessage() {
   const user = auth.currentUser;
   if (!user) return alert("Du måste vara inloggad!");
 
-  // historik & sammanfattning
+  /* --- Historik & ev. sammanfattning --- */
   chatHistory.push({ role: "user", content: text });
   if (chatHistory.length > 8) {
-    const toSum = chatHistory.slice(0, chatHistory.length - 4);
-    chatSummary = await summarizeMessages(toSum, chatSummary);
-    chatHistory = chatHistory.slice(chatHistory.length - 4);
+    const toSum      = chatHistory.slice(0, chatHistory.length - 4);
+    chatSummary      = await summarizeMessages(toSum, chatSummary);
+    chatHistory      = chatHistory.slice(chatHistory.length - 4);
   }
 
-  // bygg prompt
+  /* --- Bygg prompt för Claude --- */
   let prompt = "";
-  if (chatSummary) {
-    prompt += "Tidigare sammanfattning:\n" + chatSummary + "\n---\n";
-  }
+  if (chatSummary) prompt += "Tidigare sammanfattning:\n" + chatSummary + "\n---\n";
   prompt += "Senaste meddelanden:\n";
   chatHistory.forEach(m => {
     const who = m.role === "assistant" ? "Ove" : "Användare";
-    prompt += ${who}: ${m.content}\n;
+    prompt += `${who}: ${m.content}\n`;
   });
   prompt += "Ovan är kontexten. Svara nu på: " + text;
 
-  // spara user msg
+  /* --- Spara user-msg i Firestore --- */
   await addDoc(collection(db, "messages"), {
     role:      "user",
     content:   text,
     timestamp: serverTimestamp()
   });
 
-  // anropa Ove om online
+  /* --- Ring Ove (Claude) om online --- */
   if (isOveActive && presenceRef) {
     await updateDoc(presenceRef, { typing: true, timestamp: serverTimestamp() });
-    const res  = await fetch("/api/anthropic", {
-      method: "POST",
+
+    const res   = await fetch("/api/anthropic", {
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: prompt })
+      body:    JSON.stringify({ message: prompt })
     });
-    const data = await res.json();
+    const data  = await res.json();
     const reply = data.reply.trim();
 
     await addDoc(collection(db, "messages"), {
@@ -255,8 +253,10 @@ async function sendMessage() {
 
     chatHistory.push({ role: "assistant", content: reply });
     await updateDoc(presenceRef, { typing: false, timestamp: serverTimestamp() });
-    // stäng av om bye
-    if (reply.toLowerCase().includes("hejdå") || reply.toLowerCase().includes("tröttnat")) {
+
+    /* --- Stäng av Ove om han säger hejdå --- */
+    const bye = reply.toLowerCase();
+    if (bye.includes("hejdå") || bye.includes("tröttnat")) {
       await setDoc(presenceRef, {
         active:    false,
         typing:    false,
