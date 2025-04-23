@@ -82,4 +82,3 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(405)
         self.send_header("Allow", "POST")
         self.end_headers()
-handler är nu en klass → issubclass() blir sant 
