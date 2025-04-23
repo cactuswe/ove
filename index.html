@@ -76,21 +76,25 @@
           <i class="material-icons">logout</i>
         </button>
       </div>
+
       <div id="chatWindow"></div>
+
       <div id="statusBar">
-        <i class="material-icons">android</i>
-        <span class="circle hidden" id="oveCircle"></span>
         <strong>Ove:</strong>
         <span id="oveIndicator" class="indicator offline">Offline</span>
-        <span id="typingIndicator" class="indicator hidden">
-          <i class="material-icons">autorenew</i> Ove skriver…
+        <span id="typingIndicator" class="typing hidden">
+          <span></span><span></span><span></span>
         </span>
       </div>
-      <div id="input-area">
-        <textarea id="messageInput" rows="2" placeholder="Skriv ditt meddelande…"></textarea>
-        <button id="sendBtn" class="btn">
-          <i class="material-icons">send</i>
-        </button>
+
+      <div id="input-wrapper">
+        <div id="ovePeek" class="peek hidden"></div>
+        <div id="input-area">
+          <textarea id="messageInput" rows="2" placeholder="Skriv ditt meddelande…"></textarea>
+          <button id="sendBtn" class="btn">
+            <i class="material-icons">send</i>
+          </button>
+        </div>
       </div>
     </div>
   </main>
