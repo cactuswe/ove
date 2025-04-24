@@ -22,6 +22,7 @@ body {
   color: var(--text-color);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow-y: hidden;
 }
 
 /* Auth UI */
@@ -192,15 +193,6 @@ header {
   gap: 0.5rem;
 }
 
-.message-meta::before {
-  content: '';
-  display: block;
-  width: 4px;
-  height: 4px;
-  background: currentColor;
-  border-radius: 50%;
-  opacity: 0.5;
-}
 
 .message-content {
   display: block;
