@@ -295,6 +295,7 @@ footer {
   gap: 0.75rem;
   align-items: flex-end;
   box-shadow: 0 -1px 3px var(--shadow-color);
+  z-index: 100;
 }
 
 #messageInput {
@@ -418,14 +419,31 @@ footer {
   display: none !important;
 }
 
-/* iOS Specific */
+/* iOS Specific Updates */
 @supports (-webkit-touch-callout: none) {
   #chatUI {
+    height: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+  }
+
+  #chatWindow {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding-bottom: env(safe-area-inset-bottom);
   }
-  
+
   footer {
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    background: var(--bg-color);
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
+  #messageInput {
+    font-size: 16px; /* Prevents zoom on iOS */
   }
 }
 

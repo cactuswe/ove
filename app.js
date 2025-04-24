@@ -301,6 +301,46 @@ messageIn.addEventListener('compositionend', (e) => {
   updateSendButton();
 });
 
+// Add keyboard handling
+let keyboardHeight = 0;
+let isKeyboardVisible = false;
+
+// Add after DOM refs
+const footerEl = document.querySelector('footer');
+const chatUIEl = document.getElementById('chatUI');
+
+// Add iOS keyboard handlers
+if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+  window.visualViewport.addEventListener('resize', handleViewportResize);
+  window.visualViewport.addEventListener('scroll', handleViewportResize);
+}
+
+function handleViewportResize() {
+  const viewport = window.visualViewport;
+  if (!viewport) return;
+
+  // Check if keyboard is visible
+  isKeyboardVisible = window.screen.height - viewport.height > 100;
+  keyboardHeight = window.screen.height - viewport.height;
+
+  // Adjust UI
+  chatUIEl.style.height = `${viewport.height}px`;
+  if (isKeyboardVisible) {
+    footerEl.style.position = 'absolute';
+    footerEl.style.bottom = `${keyboardHeight}px`;
+    scrollToBottom();
+  } else {
+    footerEl.style.position = '';
+    footerEl.style.bottom = '';
+  }
+}
+
+messageIn.addEventListener('focus', () => {
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+    setTimeout(scrollToBottom, 100);
+  }
+});
+
 async function sendMessage() {
   const text = messageIn.value.trim();
   if (!text) return;
@@ -328,6 +368,14 @@ async function sendMessage() {
       timestamp: serverTimestamp(),
       userId: user.uid // Add userId to track message owner
     });
+
+    // Update Ove's active state when mentioned
+    if (mentioned) {
+      await updateOvePresence(true, true, user.uid);
+    } else if (!oveState.active) {
+      // If not mentioned and not active, do nothing
+      return;
+    }
 
     // Respond if Ove was mentioned or is active with this user
     if (isOveActive) {
