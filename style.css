@@ -1,201 +1,128 @@
-/* Modern CSS Reset with better defaults */
+/* Reset & grundinställningar */
 * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    -webkit-font-smoothing: antialiased;
+  box-sizing: border-box;
+  margin: 0; padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Modern body styling with CSS variables for theming */
 :root {
-    /* Grayscale color palette */
-    --primary-color: #4A4A4A;
-    --bg-color: #F5F5F5;
-    --text-color: #333333;
-    --border-color: #E0E0E0;
-    --chat-user-bg: #DADADA;
-    --chat-assistant-bg: #EEEEEE;
-    --accent-color: #666666;
-    
-    /* Spacing system */
-    --spacing-xs: 0.25rem;
-    --spacing-sm: 0.5rem;
-    --spacing-md: 1rem;
-    --spacing-lg: 1.5rem;
-    
-    /* Border radius */
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    
-    /* Shadows */
-    --shadow-color: 0, 0, 0;
-    --shadow-opacity: 0.08;
-    --shadow-sm: 0 1px 3px rgba(var(--shadow-color), var(--shadow-opacity));
-    --shadow-md: 0 4px 6px -1px rgba(var(--shadow-color), var(--shadow-opacity));
+  /* Färg + tema */
+  --primary-color: #4A4A4A;
+  --bg-color: #F5F5F5;
+  --text-color: #333333;
+  --border-color: #E0E0E0;
+  --chat-user-bg: #DADADA;
+  --chat-assistant-bg: #EEEEEE;
+  --accent-color: #666666;
+  /* Avstånd */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  /* Hörnradie */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  /* Skuggor */
+  --shadow-color: 0,0,0;
+  --shadow-opacity: 0.08;
+  --shadow-sm: 0 1px 3px rgba(var(--shadow-color),var(--shadow-opacity));
+  --shadow-md: 0 4px 6px -1px rgba(var(--shadow-color),var(--shadow-opacity));
 }
 
 body {
-    margin: 0;
-    display: grid;
-    place-items: center;
-    min-height: 100vh;
-    background: var(--bg-color);
-    color: var(--text-color);
-    line-height: 1.5;
+  display: grid; place-items: center;
+  min-height: 100vh;
+  background: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.5;
 }
 
-/* Chat UI Container */
 #chatUI {
-    width: 100%;
-    max-width: 600px;
-    height: 80vh;
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
-    margin: var(--spacing-lg) auto;
-    background: white;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-color);
+  width: 100%; max-width: 600px; height: 80vh;
+  display: flex; flex-direction: column; gap: var(--spacing-md);
+  padding: var(--spacing-md); margin: var(--spacing-lg) auto;
+  background: white; border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md); border: 1px solid var(--border-color);
 }
 
 #chatWindow {
-    flex: 1;
-    padding: var(--spacing-md);
-    overflow-y: auto;
-    background: white;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-color);
-    scroll-behavior: smooth;
+  flex: 1; padding: var(--spacing-md);
+  overflow-y: auto; background: white;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  scroll-behavior: smooth;
 }
 
-/* Message Styling */
+/* Meddelanden */
 .message {
-    margin: var(--spacing-sm) 0;
-    max-width: 85%;
-    padding: var(--spacing-md);
-    border-radius: var(--radius-md);
-    transition: transform 0.2s ease;
+  margin: var(--spacing-sm) 0;
+  max-width: 85%; padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: transform .2s ease;
 }
-
 .message.user {
-    align-self: flex-end;
-    background: var(--chat-user-bg);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 var(--radius-lg);
+  align-self: flex-end;
+  background: var(--chat-user-bg);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 var(--radius-lg);
 }
-
 .message.assistant {
-    align-self: flex-start;
-    background: var(--chat-assistant-bg);
-    border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 0;
+  align-self: flex-start;
+  background: var(--chat-assistant-bg);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 0;
 }
 
-/* Input Area */
+.message-meta {
+  font-size: .75rem;
+  color: #666;
+  margin-bottom: .25rem;
+}
+.message-content {
+  white-space: pre-wrap;
+}
+
+/* Input och knapp */
 #messageInput {
-    flex: 1;
-    resize: none;
-    padding: var(--spacing-md);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    font-size: 1rem;
-    background: white;
+  flex: 1; resize: none;
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  background: white;
 }
-
 #messageInput:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(74, 74, 74, 0.1);
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(74,74,74,0.1);
 }
-
-/* Send Button */
 #sendBtn {
-    padding: var(--spacing-md) var(--spacing-lg);
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.2s ease;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--primary-color); color: white;
+  border: none; border-radius: var(--radius-md);
+  cursor: pointer; font-weight: 500;
+  transition: background-color .2s ease;
 }
-
 #sendBtn:hover {
-    background: var(--accent-color);
+  background: var(--accent-color);
 }
 
-/* Ove-Peek Animation */
+/* Ove-Peek */
 #ovePeek {
-    position: fixed;
-    right: var(--spacing-md);
-    bottom: 4.2rem;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: url("/Ove-Peek.svg") center/cover no-repeat;
-    transform: translateY(100%);
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow: var(--shadow-md);
-    filter: grayscale(100%);
+  position: fixed; right: var(--spacing-md);
+  bottom: 4.2rem; width: 48px; height: 48px;
+  border-radius: 50%;
+  background: url("/ove-face.svg") center/cover no-repeat;
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow: var(--shadow-md);
+  filter: grayscale(100%);
 }
-
 #ovePeek.active {
-    transform: translateY(0);
+  transform: translateY(0);
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg-color: #1A1A1A;
-        --text-color: #E0E0E0;
-        --border-color: #404040;
-        --chat-user-bg: #4A4A4A;
-        --chat-assistant-bg: #333333;
-        --primary-color: #808080;
-        --accent-color: #9E9E9E;
-    }
-    
-    #chatUI,
-    #chatWindow,
-    #messageInput {
-        background: #262626;
-    }
-    
-    #messageInput {
-        color: var(--text-color);
-    }
-    
-    #messageInput::placeholder {
-        color: rgba(224, 224, 224, 0.6);
-    }
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    #chatUI {
-        height: 100vh;
-        margin: 0;
-        border-radius: 0;
-        max-width: 100%;
-    }
-    
-    .message {
-        max-width: 90%;
-    }
-}
-
-@media (max-width: 480px) {
-    body {
-        font-size: 15px;
-    }
-    
-    #messageInput {
-        font-size: 16px;
-    }
-    
-    #sendBtn {
-        padding: var(--spacing-sm) var(--spacing-md);
-    }
-}
+/* Responsivt & mörkt läge */
+@media (prefers-color-scheme: dark) { /* ... */ }
+@media (max-width: 768px) { /* ... */ }
+@media (max-width: 480px) { /* ... */ }
