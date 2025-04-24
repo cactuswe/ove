@@ -75,20 +75,23 @@ function appendMessage(role, text, alias, timestamp) {
   content.textContent = text;
   div.append(meta, content);
   chatWindow.append(div);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+  scrollToBottom();
 }
 
-// Replace addTypingBubble function with:
+// Update typing indicator
 function addTypingBubble() {
-  const b = document.createElement("div");
-  b.className = "typing-indicator";
+  const div = document.createElement("div");
+  div.className = "message assistant";
+  const bubble = document.createElement("div");
+  bubble.className = "typing-indicator";
   for (let i = 0; i < 3; i++) {
     const dot = document.createElement("span");
-    b.appendChild(dot);
+    bubble.appendChild(dot);
   }
-  chatWindow.appendChild(b);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
-  return b;
+  div.appendChild(bubble);
+  chatWindow.appendChild(div);
+  scrollToBottom();
+  return div;
 }
 
 // Add smooth scroll function after message
@@ -205,37 +208,18 @@ updateSendButton();
 async function sendMessage() {
   const text = messageIn.value.trim();
   if (!text) return;
-  const mentioned = /(^|\s)ove\b/i.test(text);
   const user = auth.currentUser;
   if (!user) return alert("Du måste vara inloggad!");
-
-  // Aktivera Ove endast om nämnd
-  if (mentioned && presenceRef) {
-    await setDoc(presenceRef, { active: true, typing: false, timestamp: serverTimestamp() });
-  }
+  
+  // Check if Ove is active
+  const oveState = (await getDoc(presenceRef)).data();
+  const isOveActive = oveState?.active || /(^|\s)ove\b/i.test(text);
 
   messageIn.value = "";
-  messageIn.focus();
+  autoResize(messageIn);
+  updateSendButton();
 
-  // Hantera historik och sammanfattning
-  chatHistory.push({ role: "user", content: text });
-  if (chatHistory.length > 8) {
-    const toSum = chatHistory.slice(1, chatHistory.length - 4);
-    chatSummary = await summarizeMessages(toSum, chatSummary);
-    chatHistory = [chatHistory[0], ...chatHistory.slice(chatHistory.length - 4)];
-  }
-
-  // Bygg prompt
-  let prompt = "";
-  if (chatSummary) prompt += "Tidigare sammanfattning:\n" + chatSummary + "\n---\n";
-  prompt += "Senaste meddelanden:\n";
-  chatHistory.forEach(m => {
-    const who = m.role==="assistant" ? "Ove" : "Användare";
-    prompt += `${who}: ${m.content}\n`;
-  });
-  prompt += `\nOvan är kontexten. Svara nu på: ${text}`;
-
-  // Spara användar-meddelande
+  // Save user message
   await addDoc(collection(db,"messages"), {
     role: "user",
     alias: user.displayName || user.email,
@@ -243,31 +227,37 @@ async function sendMessage() {
     timestamp: serverTimestamp()
   });
 
-  // Fråga Ove
-  if (mentioned && presenceRef) {
+  // If Ove is active, get response
+  if (isOveActive && presenceRef) {
     const typingBubble = addTypingBubble();
-    await updateDoc(presenceRef, { typing: true, timestamp: serverTimestamp() });
+    await setDoc(presenceRef, { active: true, typing: true, timestamp: serverTimestamp() });
 
-    const res = await fetch("/api/anthropic", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ message: prompt })
-    });
-    const d = await res.json();
-    typingBubble.remove();
+    try {
+      const res = await fetch("/api/anthropic", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ message: text })
+      });
+      const data = await res.json();
+      typingBubble.remove();
 
-    const reply = d.reply.trim();
-    appendMessage("assistant", reply, "Ove", { seconds: Date.now()/1000 });
-    await addDoc(collection(db,"messages"), {
-      role: "assistant",
-      alias: "Ove",
-      content: reply,
-      timestamp: serverTimestamp()
-    });
-    await updateDoc(presenceRef, { typing: false, timestamp: serverTimestamp() });
+      const reply = data.reply.trim();
+      await addDoc(collection(db,"messages"), {
+        role: "assistant",
+        alias: "Ove",
+        content: reply,
+        timestamp: serverTimestamp()
+      });
 
-    // Stäng av Ove när han säger hejdå
-    if (/hejdå|tröttnat/i.test(reply)) {
-      await setDoc(presenceRef, { active: false, typing: false, timestamp: serverTimestamp() });
+      if (/hejdå|tröttnat/i.test(reply)) {
+        await setDoc(presenceRef, { active: false, typing: false, timestamp: serverTimestamp() });
+      } else {
+        await updateDoc(presenceRef, { typing: false, timestamp: serverTimestamp() });
+      }
+    } catch (err) {
+      typingBubble.remove();
+      console.error("Error:", err);
+      appendMessage("assistant", "Oj, något gick fel!", "System");
     }
   }
 }
