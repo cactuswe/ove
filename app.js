@@ -241,8 +241,8 @@ async function sendMessage() {
   const user = auth.currentUser;
   if (!user) return alert("Du måste vara inloggad!");
   
-  // Check if Ove is active
   try {
+    // Check if Ove is active or mentioned
     const oveDoc = await getDoc(presenceRef);
     const oveState = oveDoc.data() || {};
     const isOveActive = oveState.active || /(^|\s)ove\b/i.test(text);
@@ -268,17 +268,12 @@ async function sendMessage() {
         const res = await fetch("/api/anthropic", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ 
-            message: text,
-            history: chatHistory 
-          })
+          body: JSON.stringify({ message: text })
         });
-        const data = await res.json();
+        
         typingBubble.remove();
-
+        const data = await res.json();
         const reply = data.reply.trim();
-        chatHistory.push({ role: "user", content: text });
-        chatHistory.push({ role: "assistant", content: reply });
 
         await addDoc(collection(db,"messages"), {
           role: "assistant",
@@ -287,6 +282,7 @@ async function sendMessage() {
           timestamp: serverTimestamp()
         });
 
+        // Update Ove's state
         if (/hejdå|tröttnat/i.test(reply)) {
           await setDoc(presenceRef, { active: false, typing: false, timestamp: serverTimestamp() });
         } else {
