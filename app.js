@@ -59,40 +59,59 @@ async function summarizeMessages(messages, previousSummary="") {
   return data.reply.trim();
 }
 
-// Rendera med alias & tidsstämpel
+// Add message grouping by time
+function shouldGroupMessage(prevMessage, newMessage) {
+  if (!prevMessage || prevMessage.role !== newMessage.role) return false;
+  const prevTime = new Date(prevMessage.timestamp?.seconds * 1000);
+  const newTime = new Date(newMessage.timestamp?.seconds * 1000);
+  return (newTime - prevTime) < 120000; // 2 minutes
+}
+
+// Update message rendering
 function appendMessage(role, text, alias, timestamp) {
+  const messages = chatWindow.querySelectorAll('.message');
+  const prevMessage = messages[messages.length - 1];
+  const shouldGroup = shouldGroupMessage(
+    prevMessage?.dataset, 
+    { role, timestamp }
+  );
+
   const div = document.createElement("div");
   div.className = `message ${role}`;
-  const meta = document.createElement("div");
-  meta.className = "message-meta";
-  const timeStr = timestamp
-    ? new Date(timestamp.seconds * 1000)
-        .toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"})
-    : "";
-  meta.textContent = alias ? `${alias} • ${timeStr}` : timeStr;
+  div.dataset.role = role;
+  div.dataset.timestamp = timestamp?.seconds;
+
+  if (!shouldGroup) {
+    const meta = document.createElement("div");
+    meta.className = "message-meta";
+    const timeStr = timestamp
+      ? new Date(timestamp.seconds * 1000)
+          .toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"})
+      : "";
+    meta.textContent = alias ? `${alias} • ${timeStr}` : timeStr;
+    div.appendChild(meta);
+  }
+
   const content = document.createElement("div");
   content.className = "message-content";
   content.textContent = text;
-  div.append(meta, content);
-  chatWindow.append(div);
+  div.appendChild(content);
+  chatWindow.appendChild(div);
   scrollToBottom();
 }
 
-// Update typing indicator
-function addTypingBubble() {
-  const div = document.createElement("div");
-  div.className = "message assistant";
-  const bubble = document.createElement("div");
-  bubble.className = "typing-indicator";
-  for (let i = 0; i < 3; i++) {
-    const dot = document.createElement("span");
-    bubble.appendChild(dot);
-  }
-  div.appendChild(bubble);
-  chatWindow.appendChild(div);
-  scrollToBottom();
-  return div;
-}
+// Add scroll to bottom button when needed
+const scrollBtn = document.createElement('button');
+scrollBtn.className = 'scroll-btn hidden';
+scrollBtn.innerHTML = '↓';
+chatWindow.appendChild(scrollBtn);
+
+chatWindow.addEventListener('scroll', () => {
+  const shouldShow = chatWindow.scrollTop + chatWindow.clientHeight < chatWindow.scrollHeight - 100;
+  scrollBtn.classList.toggle('hidden', !shouldShow);
+});
+
+scrollBtn.addEventListener('click', () => scrollToBottom());
 
 // Add smooth scroll function after message
 function scrollToBottom(smooth = true) {
