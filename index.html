@@ -1,108 +1,85 @@
 <!doctype html>
 <html lang="sv">
 <head>
-    <meta charset="utf-8" />
-    <title>Ove-chatten</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="description" content="Chat med Ove - din personliga AI-assistent">
-    <link rel="stylesheet" href="/style.css" />
-    
-    <!-- PWA Support -->
-    <link rel="manifest" href="/manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="theme-color" content="#2563eb">
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-    
-    <!-- iOS Splash Screens -->
-    <link rel="apple-touch-startup-image" href="/icons/splash/apple-splash-2048-2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)">
-    <link rel="apple-touch-startup-image" href="/icons/splash/apple-splash-1668-2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)">
-    <link rel="apple-touch-startup-image" href="/icons/splash/apple-splash-1536-2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2)">
-    <link rel="apple-touch-startup-image" href="/icons/splash/apple-splash-1125-2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)">
-    <link rel="apple-touch-startup-image" href="/icons/splash/apple-splash-828-1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)">
+  <meta charset="utf-8" />
+  <title>Ove-chatten</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Chat med Ove - din personliga AI-assistent">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+  <!-- PWA Support -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <!-- iOS Splash Screens omitted för korthet -->
 </head>
 <body>
-
-  <!-- AUTH ------------------------------------------------------------------>
+  <!-- AUTENTISERING -->
   <div id="authUI">
     <div class="tabs">
       <button class="tab active" data-tab="login">Logga in</button>
-      <button class="tab"           data-tab="register">Registrera</button>
+      <button class="tab" data-tab="register">Registrera</button>
     </div>
-
     <div id="login" class="tab-content active">
       <form id="loginForm">
-        <input id="loginId"       placeholder="E-post eller alias" />
+        <input id="loginId" placeholder="E-post eller alias" />
         <input id="loginPassword" placeholder="Lösenord" type="password" />
         <button id="btnLogin" type="button">Logga in</button>
       </form>
     </div>
-
     <div id="register" class="tab-content">
       <form id="registerForm">
         <input id="regDisplayName" placeholder="Alias" />
-        <input id="regEmail"       placeholder="E-post" />
-        <input id="regPassword"    placeholder="Lösenord" type="password" />
+        <input id="regEmail" placeholder="E-post" />
+        <input id="regPassword" placeholder="Lösenord" type="password" />
         <button id="btnRegister" type="button">Skapa konto</button>
       </form>
     </div>
   </div>
 
-  <!-- CHAT ----------------------------------------------------------------->
+  <!-- CHATT -->
   <div id="chatUI" class="hidden">
     <header>
       <span id="userName"></span>
       <button id="btnLogout">Logga ut</button>
     </header>
-
     <main id="chatWindow"></main>
-
     <div id="typingIndicator" class="hidden">Ove skriver …</div>
-
     <footer>
       <textarea id="messageInput" placeholder="Skriv här …" rows="1"></textarea>
       <button id="sendBtn">Skicka</button>
     </footer>
-
-    <!-- Ove-ansiktet som kikar fram -->
+    <!-- Ove-Peek som ikon/status -->
     <div id="ovePeek"></div>
   </div>
 
   <script>
-    // Register Service Worker
+    // Service Worker för PWA
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/service-worker.js')
-                .then(registration => {
-                    console.log('ServiceWorker registration successful');
-                })
-                .catch(err => {
-                    console.error('ServiceWorker registration failed: ', err);
-                });
-        });
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(() => console.log('ServiceWorker registrerad'))
+          .catch(err => console.error('SW-fel:', err));
+      });
     }
-    
-    // Förbättra textarea hantering för iOS
+    // iOS-scroll & dubbel-tap-fix
     const messageInput = document.getElementById('messageInput');
     messageInput.addEventListener('focus', () => {
-        setTimeout(() => {
-            document.documentElement.scrollTop = document.documentElement.scrollHeight;
-        }, 300);
+      setTimeout(() => {
+        document.documentElement.scrollTop = document.documentElement.scrollHeight;
+      }, 300);
     });
-    
-    // Förhindra dubbel-tap zoom på iOS
-    document.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.target.click();
+    document.addEventListener('touchend', e => {
+      e.preventDefault(); e.target.click();
     }, false);
-    
-    // Hantera iOS virtuellt tangentbord
     const viewport = window.visualViewport;
     if (viewport) {
-        viewport.addEventListener('resize', () => {
-            const chatUI = document.getElementById('chatUI');
-            chatUI.style.height = `${viewport.height}px`;
-        });
+      viewport.addEventListener('resize', () => {
+        document.getElementById('chatUI').style.height = `${viewport.height}px`;
+      });
     }
   </script>
   <script type="module" src="/app.js"></script>
