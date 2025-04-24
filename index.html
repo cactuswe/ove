@@ -25,16 +25,16 @@
     </div>
     <div id="login" class="tab-content active">
       <form id="loginForm">
-        <input id="loginId" placeholder="E-post eller alias" />
-        <input id="loginPassword" placeholder="Lösenord" type="password" />
+        <input id="loginId" placeholder="E-post eller alias" autocomplete="username" />
+        <input id="loginPassword" placeholder="Lösenord" type="password" autocomplete="current-password" />
         <button id="btnLogin" type="button">Logga in</button>
       </form>
     </div>
     <div id="register" class="tab-content">
       <form id="registerForm">
-        <input id="regDisplayName" placeholder="Alias" />
-        <input id="regEmail" placeholder="E-post" />
-        <input id="regPassword" placeholder="Lösenord" type="password" />
+        <input id="regDisplayName" placeholder="Alias" autocomplete="username" />
+        <input id="regEmail" placeholder="E-post" autocomplete="email" />
+        <input id="regPassword" placeholder="Lösenord" type="password" autocomplete="new-password" />
         <button id="btnRegister" type="button">Skapa konto</button>
       </form>
     </div>

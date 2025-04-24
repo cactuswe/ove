@@ -111,6 +111,25 @@ function scrollToBottom(smooth = true) {
   });
 }
 
+// Add typing bubble function
+function addTypingBubble() {
+  const div = document.createElement("div");
+  div.className = "message assistant";
+  
+  const bubble = document.createElement("div");
+  bubble.className = "typing-indicator";
+  
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement("span");
+    bubble.appendChild(dot);
+  }
+  
+  div.appendChild(bubble);
+  chatWindow.appendChild(div);
+  scrollToBottom();
+  return div;
+}
+
 // Tab-switch
 tabs.forEach(tab => {
   tab.addEventListener("click", () => {
