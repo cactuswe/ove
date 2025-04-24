@@ -7,7 +7,8 @@
 :root {
   --bg-color: #ffffff;
   --text-color: #1a1a1a;
-  --primary-color: #2563eb;  /* Changed to a more modern blue */
+  --primary-color: #8e8e8e;  /* Changed to neutral gray */
+  --user-msg-color: #f0f0f0; /* Light gray for user messages */
   --secondary-color: #64748b;
   --border-color: #e2e8f0;
   --message-bg: #f1f5f9;
@@ -127,11 +128,22 @@ header {
 
 /* Message Bubbles */
 .message {
-  max-width: 75%;  /* Slightly narrower for better readability */
-  margin-bottom: 0.75rem;
+  max-width: 75%;
+  margin-bottom: 1rem;
   position: relative;
   animation: fadeIn 0.3s ease-out;
-  margin-top: 0.5rem;  /* Better spacing between messages */
+}
+
+.message-meta {
+  font-size: 0.75rem;
+  color: var(--secondary-color);
+  margin-bottom: 0.25rem;
+  padding: 0 0.5rem;
+}
+
+.message.user .message-meta {
+  text-align: right;
+  color: var(--secondary-color);
 }
 
 .message-content {
@@ -139,17 +151,13 @@ header {
   border-radius: 18px;
   position: relative;
   word-wrap: break-word;
-  box-shadow: 0 1px 2px var(--shadow-color);  /* Subtle shadow */
+  box-shadow: 0 1px 2px var(--shadow-color);
   line-height: 1.4;
 }
 
-.message.user {
-  margin-left: auto;
-}
-
 .message.user .message-content {
-  background: var(--primary-color);
-  color: white;
+  background: var(--user-msg-color);
+  color: var(--text-color);
   border-bottom-right-radius: 4px;
 }
 
@@ -221,13 +229,12 @@ footer {
   display: flex;
   gap: 0.5rem;
   align-items: flex-end;
-  box-shadow: 0 -1px 5px var(--shadow-color);
 }
 
 #messageInput {
   flex: 1;
   border: 1.5px solid var(--border-color);
-  border-radius: 20px;
+  border-radius: 12px;
   padding: 0.875rem 1rem;
   min-height: 44px;
   max-height: 120px;
@@ -235,12 +242,13 @@ footer {
   font-size: 0.9375rem;
   line-height: 1.4;
   transition: all 0.2s ease;
+  background-color: #f8f8f8;
 }
 
 #messageInput:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  background-color: #ffffff;
 }
 
 #sendBtn {
@@ -248,28 +256,13 @@ footer {
   width: 42px;
   height: 42px;
   padding: 0;
-  border-radius: 21px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
+  border-radius: 12px;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
 }
 
-#sendBtn:disabled {
-  background: var(--secondary-color);
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-#sendBtn svg {
-  width: 20px;
-  height: 20px;
-  stroke: white;
-  transition: transform 0.2s ease;
-}
-
-#sendBtn:active:not(:disabled) svg {
-  transform: scale(0.9);
+#sendBtn:hover:not(:disabled) {
+  opacity: 1;
 }
 
 /* Ove Peek */
