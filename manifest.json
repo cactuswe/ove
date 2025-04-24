@@ -8,13 +8,13 @@
     "description": "Chat med Ove - AI-multiplayer",
     "icons": [
         {
-            "src": "V.png",
+            "src": "V192.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any maskable"
         },
         {
-            "src": "V.png",
+            "src": "V512.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
