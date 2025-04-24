@@ -45,9 +45,9 @@ let chatHistory = [
 
 // Summarize long context
 async function summarizeMessages(messages, previousSummary="") {
-  let prompt = "Ge en POSITIV och KONSTRUKTIV sammanfattning av samtalsämnen och viktiga detaljer (max 40 ord):\n";
+  let prompt = "Sammanfatta ENDAST viktiga fakta och samtalsämnen (max 30 ord, inga detaljer om känslor eller beteende):\n";
   if (previousSummary) {
-    prompt += "Tidigare samtal: " + previousSummary + "\n---\nNya ämnen:\n";
+    prompt += "Tidigare kontext: " + previousSummary + "\n---\nNya fakta:\n";
   }
   messages.forEach(m => {
     const who = m.role==="assistant" ? "Ove" : "Användare";
@@ -333,11 +333,11 @@ async function sendMessage() {
     if (isOveActive) {
       const typingBubble = addTypingBubble();
       
-      // Fetch fewer messages but maintain context
+      // Fetch fewer messages for more focused context
       const recentMsgs = await getDocs(
         query(collection(db, "messages"), 
         orderBy("timestamp", "desc"), 
-        limit(8))  // Reduced from 15 to 8 for more focused context
+        limit(5))  // Reduced from 8 to 5
       );
       
       const messages = [];
