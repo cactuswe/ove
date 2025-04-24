@@ -78,6 +78,27 @@ function appendMessage(role, text, alias, timestamp) {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
+// Replace addTypingBubble function with:
+function addTypingBubble() {
+  const b = document.createElement("div");
+  b.className = "typing-indicator";
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement("span");
+    b.appendChild(dot);
+  }
+  chatWindow.appendChild(b);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+  return b;
+}
+
+// Add smooth scroll function after message
+function scrollToBottom(smooth = true) {
+  chatWindow.scrollTo({
+    top: chatWindow.scrollHeight,
+    behavior: smooth ? 'smooth' : 'auto'
+  });
+}
+
 // Typing-bubbla
 function addTypingBubble() {
   const b = document.createElement("div");
@@ -178,6 +199,22 @@ messageIn.addEventListener("keydown", e=>{
     sendMessage();
   }
 });
+
+// Add input handling improvements
+messageIn.addEventListener('input', (e) => {
+  autoResize(e.target);
+  e.target.style.borderColor = e.target.value.trim() ? 'var(--primary-color)' : 'var(--border-color)';
+});
+
+// Add send button disable state
+function updateSendButton() {
+  const text = messageIn.value.trim();
+  sendBtn.disabled = !text;
+  sendBtn.style.opacity = text ? '1' : '0.5';
+}
+
+messageIn.addEventListener('input', updateSendButton);
+updateSendButton();
 
 async function sendMessage() {
   const text = messageIn.value.trim();

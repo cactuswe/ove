@@ -48,7 +48,11 @@
     <div id="typingIndicator" class="hidden">Ove skriver …</div>
     <footer>
       <textarea id="messageInput" placeholder="Skriv här …" rows="1" oninput="autoResize(this)"></textarea>
-      <button id="sendBtn">Skicka</button>
+      <button id="sendBtn" disabled>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+      </button>
     </footer>
     <div id="ovePeek"></div>
   </div>
