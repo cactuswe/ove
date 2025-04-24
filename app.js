@@ -45,9 +45,9 @@ let chatHistory = [
 
 // Summarize long context
 async function summarizeMessages(messages, previousSummary="") {
-  let prompt = "Sammanfatta följande konversation MYCKET KORTFATTAT med fokus på viktiga ämnen och fakta:\n";
+  let prompt = "Ge en POSITIV och KONSTRUKTIV sammanfattning av samtalsämnen och viktiga detaljer (max 40 ord):\n";
   if (previousSummary) {
-    prompt += "Tidigare kontext:\n" + previousSummary + "\n---\nNy konversation:\n";
+    prompt += "Tidigare samtal: " + previousSummary + "\n---\nNya ämnen:\n";
   }
   messages.forEach(m => {
     const who = m.role==="assistant" ? "Ove" : "Användare";
@@ -333,11 +333,11 @@ async function sendMessage() {
     if (isOveActive) {
       const typingBubble = addTypingBubble();
       
-      // Fetch more messages for better context
+      // Fetch fewer messages but maintain context
       const recentMsgs = await getDocs(
         query(collection(db, "messages"), 
         orderBy("timestamp", "desc"), 
-        limit(15))  // Increased from 10 to 15
+        limit(8))  // Reduced from 15 to 8 for more focused context
       );
       
       const messages = [];
@@ -349,9 +349,12 @@ async function sendMessage() {
         });
       });
 
-      // Always update summary for active conversations
-      if (messages.length > 2) {
-        chatSummary = await summarizeMessages(messages, chatSummary);
+      // Only update summary if there's significant new content
+      if (messages.length > 3 && !chatSummary) {
+        chatSummary = await summarizeMessages(messages);
+      } else if (messages.length > 5) {
+        // Update summary less frequently
+        chatSummary = await summarizeMessages(messages.slice(-3), chatSummary);
       }
 
       try {
