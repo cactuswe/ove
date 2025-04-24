@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, updateDoc, collection,
-  addDoc, query, orderBy, where, onSnapshot, serverTimestamp
+  addDoc, getDocs, query, orderBy, where, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -19,7 +19,7 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db   = getFirestore(app);
 
 // DOM-refs
 const $ = id => document.getElementById(id);
@@ -38,12 +38,12 @@ const typingIndicator = $("typingIndicator");
 let chatUnsub, presenceUnsub, presenceRef;
 let chatSummary = "";
 
-// Inledande system-prompt för kontext
+// System-prompt
 let chatHistory = [
-  { role: "system", content: "Du är Ove, en hjälpsam assistent som svarar på svenska." }
+  { role: "system", content: "Du är Ove, en hjälpsam assistent på svenska." }
 ];
 
-// Summeringsfunktion (oförändrad)
+// Summarize long context
 async function summarizeMessages(messages, previousSummary="") {
   let prompt = "Sammanfatta följande konversation på max 60 ord:\n";
   if (previousSummary) prompt += "Tidigare sammanfattning:\n"+previousSummary+"\n---\n";
@@ -51,19 +51,18 @@ async function summarizeMessages(messages, previousSummary="") {
     const who = m.role==="assistant" ? "Ove" : "Användare";
     prompt += `${who}: ${m.content}\n`;
   });
-  const r = await fetch("/api/anthropic", {
+  const res = await fetch("/api/anthropic", {
     method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ message: prompt })
   });
-  const d = await r.json();
-  return d.reply.trim();
+  const data = await res.json();
+  return data.reply.trim();
 }
 
-// Rendera meddelande med alias + tid
+// Rendera med alias & tidsstämpel
 function appendMessage(role, text, alias, timestamp) {
   const div = document.createElement("div");
   div.className = `message ${role}`;
-
   const meta = document.createElement("div");
   meta.className = "message-meta";
   const timeStr = timestamp
@@ -71,21 +70,19 @@ function appendMessage(role, text, alias, timestamp) {
         .toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"})
     : "";
   meta.textContent = alias ? `${alias} • ${timeStr}` : timeStr;
-
   const content = document.createElement("div");
   content.className = "message-content";
   content.textContent = text;
-
   div.append(meta, content);
   chatWindow.append(div);
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-// “Skriv”-bubbla
+// Typing-bubbla
 function addTypingBubble() {
   const b = document.createElement("div");
   b.className = "message assistant typing";
-  for (let i = 0; i < 3; i++) {
+  for (let i=0; i<3; i++){
     const dot = document.createElement("span");
     dot.className = "dot";
     b.append(dot);
@@ -95,7 +92,7 @@ function addTypingBubble() {
   return b;
 }
 
-// Växla mellan login/register-tabb
+// Tab-switch
 tabs.forEach(tab => {
   tab.addEventListener("click", () => {
     tabs.forEach(t=>t.classList.remove("active"));
@@ -104,27 +101,24 @@ tabs.forEach(tab => {
     $(tab.dataset.tab).classList.add("active");
   });
 });
+loginForm.addEventListener("submit", e=>{e.preventDefault(); btnLogin.click();});
+registerForm.addEventListener("submit", e=>{e.preventDefault(); btnRegister.click();});
 
-// Stoppa form-submit
-loginForm.addEventListener("submit", e => { e.preventDefault(); btnLogin.click(); });
-registerForm.addEventListener("submit", e => { e.preventDefault(); btnRegister.click(); });
-
-// Registrering
-btnRegister.addEventListener("click", async () => {
+// Registrera
+btnRegister.addEventListener("click", async()=>{
   try {
     const cred = await createUserWithEmailAndPassword(auth, regEm.value, regPw.value);
     await updateProfile(cred.user, { displayName: regDn.value });
-    await setDoc(doc(db,"users",cred.user.uid), {
+    await setDoc(doc(db,"users", cred.user.uid), {
       displayName: regDn.value,
       email: cred.user.email
     });
-  } catch (e) {
+  } catch(e) {
     alert("Registreringsfel: " + e.message);
   }
 });
-
-// Login
-btnLogin.addEventListener("click", async () => {
+// Logga in
+btnLogin.addEventListener("click", async()=>{
   try {
     let email = loginId.value.trim();
     if (email && !/@/.test(email)) {
@@ -135,16 +129,15 @@ btnLogin.addEventListener("click", async () => {
       email = snap.docs[0].data().email;
     }
     await signInWithEmailAndPassword(auth, email, loginPw.value);
-  } catch (e) {
+  } catch(e) {
     alert("Login-fel: " + e.message);
   }
 });
-btnLogout.addEventListener("click", () => signOut(auth));
+btnLogout.addEventListener("click", ()=>signOut(auth));
 
-// Auth + närvaro + meddelandesub
+// Auth-state + närvaro + meddelanden
 onAuthStateChanged(auth, user => {
   if (user) {
-    // Närvaro
     presenceRef = doc(db,"presence","ove");
     presenceUnsub?.();
     presenceUnsub = onSnapshot(presenceRef, snap => {
@@ -153,13 +146,11 @@ onAuthStateChanged(auth, user => {
       typingIndicator.classList.toggle("hidden", !d.typing);
     });
 
-    // Visa chatten
     authUI.classList.add("hidden");
     chatUI.classList.remove("hidden");
     userNameEl.textContent = user.displayName || user.email;
     messageIn.focus();
 
-    // Hämta meddelanden
     chatUnsub?.();
     chatUnsub = onSnapshot(
       query(collection(db,"messages"), orderBy("timestamp")),
@@ -172,7 +163,8 @@ onAuthStateChanged(auth, user => {
       }
     );
   } else {
-    chatUnsub?.(); presenceUnsub?.();
+    chatUnsub?.();
+    presenceUnsub?.();
     chatUI.classList.add("hidden");
     authUI.classList.remove("hidden");
   }
@@ -180,8 +172,8 @@ onAuthStateChanged(auth, user => {
 
 // Skicka-meddelande
 sendBtn.addEventListener("click", sendMessage);
-messageIn.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
+messageIn.addEventListener("keydown", e=>{
+  if (e.key==="Enter" && !e.shiftKey) {
     e.preventDefault();
     sendMessage();
   }
@@ -190,28 +182,21 @@ messageIn.addEventListener("keydown", e => {
 async function sendMessage() {
   const text = messageIn.value.trim();
   if (!text) return;
-  // Förbättrad nämning
   const mentioned = /(^|\s)ove\b/i.test(text);
-
   const user = auth.currentUser;
   if (!user) return alert("Du måste vara inloggad!");
 
-  // Aktivera Ove om nämnd
+  // Aktivera Ove endast om nämnd
   if (mentioned && presenceRef) {
-    await setDoc(presenceRef, {
-      active: true,
-      typing: false,
-      timestamp: serverTimestamp()
-    });
+    await setDoc(presenceRef, { active: true, typing: false, timestamp: serverTimestamp() });
   }
 
   messageIn.value = "";
   messageIn.focus();
 
-  // Lägg in i historik
+  // Hantera historik och sammanfattning
   chatHistory.push({ role: "user", content: text });
   if (chatHistory.length > 8) {
-    // Summa äldre
     const toSum = chatHistory.slice(1, chatHistory.length - 4);
     chatSummary = await summarizeMessages(toSum, chatSummary);
     chatHistory = [chatHistory[0], ...chatHistory.slice(chatHistory.length - 4)];
@@ -222,47 +207,42 @@ async function sendMessage() {
   if (chatSummary) prompt += "Tidigare sammanfattning:\n" + chatSummary + "\n---\n";
   prompt += "Senaste meddelanden:\n";
   chatHistory.forEach(m => {
-    const who = m.role === "assistant" ? "Ove" : "Användare";
+    const who = m.role==="assistant" ? "Ove" : "Användare";
     prompt += `${who}: ${m.content}\n`;
   });
   prompt += `\nOvan är kontexten. Svara nu på: ${text}`;
 
-  // Spara användarmeddelande
+  // Spara användar-meddelande
   await addDoc(collection(db,"messages"), {
-    role:    "user",
-    alias:   user.displayName || user.email,
+    role: "user",
+    alias: user.displayName || user.email,
     content: text,
     timestamp: serverTimestamp()
   });
 
   // Fråga Ove
-  if ((mentioned || true) && presenceRef) {
+  if (mentioned && presenceRef) {
     const typingBubble = addTypingBubble();
     await updateDoc(presenceRef, { typing: true, timestamp: serverTimestamp() });
 
     const res = await fetch("/api/anthropic", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ message: prompt })
     });
     const d = await res.json();
-
     typingBubble.remove();
+
     const reply = d.reply.trim();
-
-    // Visa svar direkt
     appendMessage("assistant", reply, "Ove", { seconds: Date.now()/1000 });
-
-    // Spara Oves svar
     await addDoc(collection(db,"messages"), {
-      role:    "assistant",
-      alias:   "Ove",
+      role: "assistant",
+      alias: "Ove",
       content: reply,
       timestamp: serverTimestamp()
     });
     await updateDoc(presenceRef, { typing: false, timestamp: serverTimestamp() });
 
-    // Avsluta när Ove säger hejdå
+    // Stäng av Ove när han säger hejdå
     if (/hejdå|tröttnat/i.test(reply)) {
       await setDoc(presenceRef, { active: false, typing: false, timestamp: serverTimestamp() });
     }
