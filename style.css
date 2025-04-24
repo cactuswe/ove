@@ -144,7 +144,7 @@ header {
   gap: 0.5rem;
 }
 
-.message-meta::before {
+.message-meta::after {
   content: '';
   display: block;
   width: 4px;
@@ -168,6 +168,9 @@ header {
 .message.user .message-content {
   background: #f1f5f9;
   border-bottom-right-radius: 4px;
+}
+.message.user {
+    margin-left: auto;
 }
 
 .message.assistant {
@@ -214,10 +217,6 @@ header {
   margin: 0 1rem 0.25rem;
   opacity: 0.8;
   color: var(--secondary-color);
-}
-
-.message.user .message-meta {
-  color: rgba(255, 255, 255, 0.8);
 }
 
 /* Time bubble */
