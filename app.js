@@ -70,7 +70,18 @@ function shouldGroupMessage(prevMessage, newMessage) {
 // Update message rendering
 function appendMessage(role, text, alias, timestamp) {
   const div = document.createElement("div");
-  div.className = `message ${role}`;
+  const currentUser = auth.currentUser;
+  
+  // Determine message type
+  if (role === 'user') {
+    if (alias === (currentUser?.displayName || currentUser?.email)) {
+      div.className = 'message user';
+    } else {
+      div.className = 'message other-user';
+    }
+  } else {
+    div.className = `message ${role}`;
+  }
   
   const meta = document.createElement("div");
   meta.className = "message-meta";

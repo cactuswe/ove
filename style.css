@@ -132,7 +132,55 @@ header {
   margin: 0.5rem 0;
   position: relative;
   animation: fadeIn 0.3s ease-out;
-  margin-right: auto; /* All messages align left by default */
+  margin-right: auto;
+  width: fit-content;
+}
+
+.message.user {
+  margin-left: auto;
+  margin-right: 0;
+}
+.message.other-user {
+    margin-right: auto;
+}
+
+.message.user .message-content {
+  background: #e2e8f0;  /* Slightly darker for your messages */
+  border-bottom-right-radius: 4px;
+  margin-left: auto;
+  color: #1a1a1a;
+}
+
+.message.other-user .message-content {
+  background: #f1f5f9;  /* Lighter for other users */
+  border-bottom-left-radius: 4px;
+  color: #475569;
+}
+
+.message.assistant .message-content {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Meta data styling updates */
+.message.user .message-meta {
+  justify-content: flex-end;
+  padding-right: 0.5rem;
+}
+
+.message.other-user .message-meta {
+  justify-content: flex-start;
+  padding-left: 0.5rem;
+}
+
+.message.user .message-time {
+  background: #e2e8f0;
+}
+
+.message.other-user .message-time {
+  background: #f8fafc;
 }
 
 .message-meta {
@@ -155,7 +203,7 @@ header {
 }
 
 .message-content {
-  display: inline-block;
+  display: block;
   padding: 0.875rem 1rem;
   border-radius: 16px;
   position: relative;
