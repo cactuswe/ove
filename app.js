@@ -149,7 +149,10 @@ onAuthStateChanged(auth,user=>{
     chatUnsub?.();
     chatUnsub=onSnapshot(query(collection(db,"messages"),orderBy("timestamp")),snap=>{
       chatWindow.innerHTML="";
-      snap.forEach(d=>appendMessage(d.data().role,d.data().content));
+      snap.forEach(d=>{
+        const msg = d.data();
+        appendMessage(msg.role, msg.content, msg.alias, msg.timestamp);
+      });
     });
 
   }else{
