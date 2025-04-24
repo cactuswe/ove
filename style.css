@@ -125,6 +125,8 @@ header {
   overflow-y: auto;
   padding: 1rem;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  position: relative;
 }
 
 /* Message Bubbles */
@@ -132,7 +134,7 @@ header {
   max-width: 75%;
   margin: 0.5rem 0;
   position: relative;
-  animation: fadeIn 0.3s ease-out;
+  animation: slideIn 0.2s ease-out;
   margin-right: auto;
   width: fit-content;
 }
@@ -229,6 +231,11 @@ header {
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
 

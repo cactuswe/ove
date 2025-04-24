@@ -69,6 +69,8 @@ function shouldGroupMessage(prevMessage, newMessage) {
 
 // Update message rendering
 function appendMessage(role, text, alias, timestamp) {
+  const isNearBottom = chatWindow.scrollHeight - chatWindow.scrollTop - chatWindow.clientHeight < 100;
+  
   const div = document.createElement("div");
   const currentUser = auth.currentUser;
   
@@ -102,7 +104,11 @@ function appendMessage(role, text, alias, timestamp) {
   
   div.append(meta, content);
   chatWindow.append(div);
-  scrollToBottom();
+  
+  // Only auto-scroll if we were already near bottom
+  if (isNearBottom) {
+    scrollToBottom();
+  }
 }
 
 // Add scroll to bottom button when needed
@@ -120,9 +126,12 @@ scrollBtn.addEventListener('click', () => scrollToBottom());
 
 // Add smooth scroll function after message
 function scrollToBottom(smooth = true) {
-  chatWindow.scrollTo({
-    top: chatWindow.scrollHeight,
-    behavior: smooth ? 'smooth' : 'auto'
+  requestAnimationFrame(() => {
+    const chatWindow = document.getElementById('chatWindow');
+    const lastMessage = chatWindow.lastElementChild;
+    if (lastMessage) {
+      lastMessage.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+    }
   });
 }
 
