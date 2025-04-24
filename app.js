@@ -72,14 +72,18 @@ function appendMessage(role, text, alias, timestamp) {
   const div = document.createElement("div");
   div.className = `message ${role}`;
   
-  // Always show meta data
   const meta = document.createElement("div");
   meta.className = "message-meta";
+  
   const timeStr = timestamp
     ? new Date(timestamp.seconds * 1000)
-        .toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"})
-    : new Date().toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"});
-  meta.textContent = `${alias || 'Unknown'} • ${timeStr}`;
+        .toLocaleTimeString("sv-SE", {hour:"2-digit", minute:"2-digit"})
+    : new Date().toLocaleTimeString("sv-SE", {hour:"2-digit", minute:"2-digit"});
+  
+  meta.innerHTML = `
+    ${alias || 'Unknown'}
+    <span class="message-time">${timeStr}</span>
+  `;
   
   const content = document.createElement("div");
   content.className = "message-content";

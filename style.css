@@ -129,35 +129,44 @@ header {
 /* Message Bubbles */
 .message {
   max-width: 75%;
-  margin-bottom: 1rem;
+  margin: 0.5rem 0;
   position: relative;
   animation: fadeIn 0.3s ease-out;
+  margin-right: auto; /* All messages align left by default */
 }
 
 .message-meta {
-  font-size: 0.75rem;
-  color: var(--secondary-color);
-  margin-bottom: 0.25rem;
-  padding: 0 0.5rem;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin: 0.25rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.message.user .message-meta {
-  text-align: right;
-  color: var(--secondary-color);
+.message-meta::before {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 4px;
+  background: currentColor;
+  border-radius: 50%;
+  opacity: 0.5;
 }
 
 .message-content {
+  display: inline-block;
   padding: 0.875rem 1rem;
-  border-radius: 18px;
+  border-radius: 16px;
   position: relative;
   word-wrap: break-word;
-  box-shadow: 0 1px 2px var(--shadow-color);
   line-height: 1.4;
+  max-width: fit-content;
+  min-width: 60px;
 }
 
 .message.user .message-content {
-  background: var(--user-msg-color);
-  color: var(--text-color);
+  background: #f1f5f9;
   border-bottom-right-radius: 4px;
 }
 
@@ -166,9 +175,10 @@ header {
 }
 
 .message.assistant .message-content {
-  background: var(--message-assistant);
-  border: 1px solid var(--border-color);
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
   border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 @keyframes fadeIn {
@@ -178,27 +188,23 @@ header {
 
 /* Typing Indicator */
 .typing-indicator {
-  padding: 0.75rem;
-  background: var(--message-assistant);
-  border: 1px solid var(--border-color);
-  border-radius: 18px;
-  border-bottom-left-radius: 4px;
-  margin: 0.5rem 0;
-  box-shadow: 0 1px 2px var(--shadow-color);
-  width: fit-content;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  animation: fadeIn 0.3s ease-out;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  border-bottom-left-radius: 4px;
+  min-width: 60px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .typing-indicator span {
-  width: 6px;
-  height: 6px;
-  margin: 0 1px;
-  background: var(--secondary-color);
+  width: 4px;
+  height: 4px;
+  background: #94a3b8;
   border-radius: 50%;
-  display: inline-block;
   animation: bounce 1.4s infinite ease-in-out;
   opacity: 0.6;
 }
@@ -212,6 +218,16 @@ header {
 
 .message.user .message-meta {
   color: rgba(255, 255, 255, 0.8);
+}
+
+/* Time bubble */
+.message-time {
+  font-variant-numeric: tabular-nums;
+  background: #f8fafc;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  border: 1px solid #e2e8f0;
 }
 
 /* Remove old typing indicator */
