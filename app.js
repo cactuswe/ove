@@ -69,34 +69,24 @@ function shouldGroupMessage(prevMessage, newMessage) {
 
 // Update message rendering
 function appendMessage(role, text, alias, timestamp) {
-  const messages = chatWindow.querySelectorAll('.message');
-  const prevMessage = messages[messages.length - 1];
-  const shouldGroup = shouldGroupMessage(
-    prevMessage?.dataset, 
-    { role, timestamp }
-  );
-
   const div = document.createElement("div");
   div.className = `message ${role}`;
-  div.dataset.role = role;
-  div.dataset.timestamp = timestamp?.seconds;
-
-  if (!shouldGroup) {
-    const meta = document.createElement("div");
-    meta.className = "message-meta";
-    const timeStr = timestamp
-      ? new Date(timestamp.seconds * 1000)
-          .toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"})
-      : "";
-    meta.textContent = alias ? `${alias} • ${timeStr}` : timeStr;
-    div.appendChild(meta);
-  }
-
+  
+  // Always show meta data
+  const meta = document.createElement("div");
+  meta.className = "message-meta";
+  const timeStr = timestamp
+    ? new Date(timestamp.seconds * 1000)
+        .toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"})
+    : new Date().toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"});
+  meta.textContent = `${alias || 'Unknown'} • ${timeStr}`;
+  
   const content = document.createElement("div");
   content.className = "message-content";
   content.textContent = text;
-  div.appendChild(content);
-  chatWindow.appendChild(div);
+  
+  div.append(meta, content);
+  chatWindow.append(div);
   scrollToBottom();
 }
 
@@ -232,60 +222,65 @@ async function sendMessage() {
   const user = auth.currentUser;
   if (!user) return alert("Du måste vara inloggad!");
   
-  // Check if Ove is active or mentioned
-  let isOveActive = false;
+  // Check if Ove is active
   try {
     const oveDoc = await getDoc(presenceRef);
     const oveState = oveDoc.data() || {};
-    isOveActive = oveState.active || /(^|\s)ove\b/i.test(text);
-  } catch (err) {
-    console.error("Failed to check Ove state:", err);
-    isOveActive = /(^|\s)ove\b/i.test(text);
-  }
+    const isOveActive = oveState.active || /(^|\s)ove\b/i.test(text);
 
-  messageIn.value = "";
-  autoResize(messageIn);
-  updateSendButton();
+    messageIn.value = "";
+    autoResize(messageIn);
+    updateSendButton();
 
-  // Save user message
-  await addDoc(collection(db,"messages"), {
-    role: "user",
-    alias: user.displayName || user.email,
-    content: text,
-    timestamp: serverTimestamp()
-  });
+    // Save user message
+    await addDoc(collection(db,"messages"), {
+      role: "user",
+      alias: user.displayName || user.email,
+      content: text,
+      timestamp: serverTimestamp()
+    });
 
-  // If Ove is active, get response
-  if (isOveActive && presenceRef) {
-    const typingBubble = addTypingBubble();
-    await setDoc(presenceRef, { active: true, typing: true, timestamp: serverTimestamp() });
+    // Always respond if Ove is active
+    if (isOveActive) {
+      const typingBubble = addTypingBubble();
+      await setDoc(presenceRef, { active: true, typing: true, timestamp: serverTimestamp() });
 
-    try {
-      const res = await fetch("/api/anthropic", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ message: text })
-      });
-      const data = await res.json();
-      typingBubble.remove();
+      try {
+        const res = await fetch("/api/anthropic", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ 
+            message: text,
+            history: chatHistory 
+          })
+        });
+        const data = await res.json();
+        typingBubble.remove();
 
-      const reply = data.reply.trim();
-      await addDoc(collection(db,"messages"), {
-        role: "assistant",
-        alias: "Ove",
-        content: reply,
-        timestamp: serverTimestamp()
-      });
+        const reply = data.reply.trim();
+        chatHistory.push({ role: "user", content: text });
+        chatHistory.push({ role: "assistant", content: reply });
 
-      if (/hejdå|tröttnat/i.test(reply)) {
-        await setDoc(presenceRef, { active: false, typing: false, timestamp: serverTimestamp() });
-      } else {
-        await updateDoc(presenceRef, { typing: false, timestamp: serverTimestamp() });
+        await addDoc(collection(db,"messages"), {
+          role: "assistant",
+          alias: "Ove",
+          content: reply,
+          timestamp: serverTimestamp()
+        });
+
+        if (/hejdå|tröttnat/i.test(reply)) {
+          await setDoc(presenceRef, { active: false, typing: false, timestamp: serverTimestamp() });
+        } else {
+          await updateDoc(presenceRef, { typing: false, timestamp: serverTimestamp() });
+        }
+      } catch (err) {
+        typingBubble.remove();
+        console.error("Error:", err);
+        appendMessage("assistant", "Oj, något gick fel!", "System");
       }
-    } catch (err) {
-      typingBubble.remove();
-      console.error("Error:", err);
-      appendMessage("assistant", "Oj, något gick fel!", "System");
     }
+  } catch (err) {
+    console.error("Failed to handle message:", err);
+    alert("Något gick fel när meddelandet skulle skickas");
   }
 }
