@@ -168,10 +168,12 @@ header {
 .message.user .message-content {
   background: #f1f5f9;
   border-bottom-right-radius: 4px;
+  margin-left: auto;
 }
 .message.user {
     margin-left: auto;
     margin-right: 0;
+    width: fit-content;
 }
 
 .message.assistant {
