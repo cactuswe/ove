@@ -216,7 +216,7 @@ footer {
 #ovePeek {
   position: absolute;
   bottom: 5rem;
-  right: 1rem;
+  left: 1rem;
   width: 60px;
   height: 60px;
   background: url('/ove-face.svg') center/contain no-repeat;
