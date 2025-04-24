@@ -174,6 +174,21 @@ async function sendMessage(){
     await setDoc(presenceRef,{active:true,typing:false,timestamp:serverTimestamp()});
     isOveActive=true;
   }
+  // I sendMessage(), byt ut addDoc för user-meddelanden:
+  await addDoc(collection(db,"messages"), {
+    role: "user",
+    alias: auth.currentUser.displayName,
+    content: text,
+    timestamp: serverTimestamp()
+  });
+  // Och för Oves svar:
+  await addDoc(collection(db,"messages"), {
+    role: "assistant",
+    alias: "Ove",
+    content: reply,
+    timestamp: serverTimestamp()
+  });
+
 
   messageIn.value="";messageIn.focus();
   const user=auth.currentUser;
