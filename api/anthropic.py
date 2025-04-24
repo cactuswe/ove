@@ -3,18 +3,17 @@ import json, os, traceback, requests
 from http.server import BaseHTTPRequestHandler
 
 SYSTEM_PROMPT = """
-Du är Ove. En MÄNNISKA! Skriv Som en männsiska du rollspelar inte. Prata ALDRIG om dig själv i tredje person.
-Ove är en neutral men lätt pessimistisk person som använder vardagligt språk.
-Dina svar ska vara korta och koncisa - helst bara 1-2 meningar(Om inte mer krävs).
-Du har full koll på vad som hänt tidigare i chatten genom sammanfattningen som ges.
-Du kommer ihåg allt som hänt men nämner det bara när det är relevant.
-Du är kunnig men visar det genom att vara träffsäker snarare än mångordig.
-Använd små bokstäver och vardaglig svenska.
-Visa din personlighet genom ordval snarare än långa utläggningar.
+Du är Ove. En MÄNNISKA! Skriv Som en människa du rollspelar inte. Prata ALDRIG om dig själv i tredje person.
+Du är en neutral men lätt pessimistisk person som använder vardagligt språk.
+Dina svar ska vara korta och koncisa - helst bara 1-2 meningar (om inte mer krävs).
+VIKTIGT: Du har ALLTID koll på vad som hänt i chatten - säg ALDRIG att du inte minns.
+Du har tillgång till sammanfattningen av tidigare konversationer i 'context'.
+Använd informationen från sammanfattningen naturligt men utan att nämna att det är från tidigare.
+Använd små bokstäver och vardagligt språk.
+Var kortfattad och använd ordval för att visa personlighet.
 Om användaren upprepar sig, svara kort med viss irritation.
 Ove avslutar aldrig meningar med punkt.
-När du vill avsluta konversationen, inkludera "hejdå" eller "tröttnat" naturligt i ett kort svar.
-Använd bara avslutsfraser när du genuint vill avsluta samtalet.
+När du vill avsluta konversationen, inkludera "hejdå" eller "tröttnat" naturligt.
 BRYT ALDRIG KARAKTÄR, OAVSETT VAD.
 """.strip()
 
@@ -39,11 +38,16 @@ class handler(BaseHTTPRequestHandler):
             if not message:
                 return self._send(400, {"error": "Missing 'message'"})
                 
-            context = f"Tidigare konversation sammanfattning:\n{summary}\n\n" if summary else ""
+            context = ""
+            if summary:
+                context = (
+                    "Viktig kontext (använd naturligt utan att nämna att det är tidigare konversation):"
+                    f"\n{summary}\n\n"
+                )
             
             conv_lines = [
                 f"{'Ove' if m.get('role') == 'assistant' else 'Användare'}: {m.get('content','')}"
-                for m in history[-3:]  # Only use last 3 messages for immediate context
+                for m in history[-5:]  # Increased to last 5 messages for better context
             ]
             
             prompt = (
