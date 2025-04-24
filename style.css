@@ -144,7 +144,7 @@ header {
   gap: 0.5rem;
 }
 
-.message-meta::after {
+.message-meta::before {
   content: '';
   display: block;
   width: 4px;
@@ -171,6 +171,7 @@ header {
 }
 .message.user {
     margin-left: auto;
+    margin-right: 0;
 }
 
 .message.assistant {
