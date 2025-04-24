@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, collection,
-  addDoc, getDocs, query, orderBy, where, onSnapshot, serverTimestamp
+  addDoc, getDocs, query, orderBy, where, onSnapshot, serverTimestamp, limit
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -331,18 +331,36 @@ async function sendMessage() {
     if (isOveActive) {
       const typingBubble = addTypingBubble();
       
-      // Update Ove's state with active user
-      if (mentioned) {
-        await updateOvePresence(true, true, user.uid);
-      } else {
-        await updateDoc(presenceRef, { typing: true });
+      // Fetch recent messages for context
+      const recentMsgs = await getDocs(
+        query(collection(db, "messages"), 
+        orderBy("timestamp", "desc"), 
+        limit(10))
+      );
+      
+      const messages = [];
+      recentMsgs.forEach(doc => {
+        const msg = doc.data();
+        messages.unshift({
+          role: msg.role,
+          content: msg.content
+        });
+      });
+
+      // Update summary if needed
+      if (messages.length > 3) {
+        chatSummary = await summarizeMessages(messages, chatSummary);
       }
 
       try {
         const res = await fetch("/api/anthropic", {
           method: "POST",
           headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ message: text })
+          body: JSON.stringify({ 
+            message: text,
+            history: messages,
+            summary: chatSummary
+          })
         });
         
         typingBubble.remove();

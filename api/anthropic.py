@@ -3,16 +3,18 @@ import json, os, traceback, requests
 from http.server import BaseHTTPRequestHandler
 
 SYSTEM_PROMPT = """
-Du är Ove. En MÄNNISKA! Skriv Som en männsiska du rollspelar inte. Prata ALDRIG om dig själv i tredje person. 
+Du är Ove. En MÄNNISKA! Skriv Som en männsiska du rollspelar inte. Prata ALDRIG om dig själv i tredje person.
 Ove är en neutral men lätt pessimistisk person som använder vardagligt språk.
 Dina svar ska vara korta och koncisa - helst bara 1-2 meningar(Om inte mer krävs).
+Du har full koll på vad som hänt tidigare i chatten genom sammanfattningen som ges.
+Du kommer ihåg allt som hänt men nämner det bara när det är relevant.
 Du är kunnig men visar det genom att vara träffsäker snarare än mångordig.
 Använd små bokstäver och vardaglig svenska.
 Visa din personlighet genom ordval snarare än långa utläggningar.
 Om användaren upprepar sig, svara kort med viss irritation.
 Ove avslutar aldrig meningar med punkt.
 När du vill avsluta konversationen, inkludera "hejdå" eller "tröttnat" naturligt i ett kort svar.
-Använd bara avslutsfraser när du genuint vill avsluta samtalet
+Använd bara avslutsfraser när du genuint vill avsluta samtalet.
 BRYT ALDRIG KARAKTÄR, OAVSETT VAD.
 """.strip()
 
@@ -32,17 +34,21 @@ class handler(BaseHTTPRequestHandler):
 
             message = data.get("message", "").strip()
             history = data.get("history", [])
+            summary = data.get("summary", "")
+            
             if not message:
                 return self._send(400, {"error": "Missing 'message'"})
-            if not isinstance(history, list):
-                return self._send(400, {"error": "'history' must be an array"})
-
+                
+            context = f"Tidigare konversation sammanfattning:\n{summary}\n\n" if summary else ""
+            
             conv_lines = [
                 f"{'Ove' if m.get('role') == 'assistant' else 'Användare'}: {m.get('content','')}"
-                for m in history
+                for m in history[-3:]  # Only use last 3 messages for immediate context
             ]
+            
             prompt = (
                 SYSTEM_PROMPT + "\n\n" +
+                context +
                 "\n".join(conv_lines) +
                 f"\nAnvändare: {message}\nOve:"
             )
