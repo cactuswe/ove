@@ -69,8 +69,7 @@ function shouldGroupMessage(prevMessage, newMessage) {
 
 // Update message rendering
 function appendMessage(role, text, alias, timestamp) {
-  const isNearBottom = chatWindow.scrollHeight - chatWindow.scrollTop - chatWindow.clientHeight < 100;
-  
+  const isNearBottom = chatWindow.scrollHeight - chatWindow.scrollTop - chatWindow.clientHeight < 150;
   const div = document.createElement("div");
   const currentUser = auth.currentUser;
   
@@ -103,12 +102,15 @@ function appendMessage(role, text, alias, timestamp) {
   content.textContent = text;
   
   div.append(meta, content);
-  chatWindow.append(div);
   
-  // Only auto-scroll if we were already near bottom
-  if (isNearBottom) {
-    scrollToBottom();
-  }
+  // Add message without scrolling
+  requestAnimationFrame(() => {
+    chatWindow.appendChild(div);
+    // Only scroll if we're near bottom
+    if (isNearBottom) {
+      div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  });
 }
 
 // Add scroll to bottom button when needed
@@ -304,10 +306,13 @@ async function sendMessage() {
   if (!user) return alert("Du måste vara inloggad!");
   
   try {
-    // Check if Ove is active or mentioned
     const oveDoc = await getDoc(presenceRef);
     const oveState = oveDoc.data() || {};
-    const isOveActive = oveState.active || /(^|\s)ove\b/i.test(text);
+    const mentioned = /(^|\s)ove\b/i.test(text);
+    const isActiveUser = oveState.activeUser === user.uid;
+    
+    // Activate Ove if mentioned or already active with this user
+    const isOveActive = mentioned || (oveState.active && isActiveUser);
 
     messageIn.value = "";
     autoResize(messageIn);
@@ -318,18 +323,25 @@ async function sendMessage() {
       role: "user",
       alias: user.displayName || user.email,
       content: text,
-      timestamp: serverTimestamp()
+      timestamp: serverTimestamp(),
+      userId: user.uid // Add userId to track message owner
     });
 
-    // Always respond if Ove is active
+    // Respond if Ove was mentioned or is active with this user
     if (isOveActive) {
       const typingBubble = addTypingBubble();
-      await setDoc(presenceRef, { active: true, typing: true, timestamp: serverTimestamp() });
+      
+      // Update Ove's state with active user
+      if (mentioned) {
+        await updateOvePresence(true, true, user.uid);
+      } else {
+        await updateDoc(presenceRef, { typing: true });
+      }
 
       try {
         const res = await fetch("/api/anthropic", {
           method: "POST",
-          headers: {"Content-Type": "application/json"},
+          headers: {"Content-Type":"application/json"},
           body: JSON.stringify({ message: text })
         });
         
@@ -344,11 +356,11 @@ async function sendMessage() {
           timestamp: serverTimestamp()
         });
 
-        // Update Ove's state
+        // Update state based on response
         if (/hejdå|tröttnat/i.test(reply)) {
-          await setDoc(presenceRef, { active: false, typing: false, timestamp: serverTimestamp() });
+          await updateOvePresence(false, false, null);
         } else {
-          await updateDoc(presenceRef, { typing: false, timestamp: serverTimestamp() });
+          await updateDoc(presenceRef, { typing: false });
         }
       } catch (err) {
         typingBubble.remove();
@@ -360,4 +372,14 @@ async function sendMessage() {
     console.error("Failed to handle message:", err);
     alert("Något gick fel när meddelandet skulle skickas");
   }
+}
+
+// Update presence tracking to include active user
+async function updateOvePresence(isActive, typing, activeUser = null) {
+  await setDoc(presenceRef, {
+    active: isActive,
+    typing: typing,
+    activeUser: activeUser, // Track who Ove is talking to
+    timestamp: serverTimestamp()
+  });
 }
