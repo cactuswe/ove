@@ -235,6 +235,44 @@ function updateSendButton() {
 messageIn.addEventListener('input', updateSendButton);
 updateSendButton();
 
+// Enhanced input handling
+messageIn.addEventListener('input', (e) => {
+  const el = e.target;
+  autoResize(el);
+  
+  // Update send button state
+  const text = el.value.trim();
+  sendBtn.disabled = !text;
+  sendBtn.style.opacity = text ? '1' : '0.5';
+  
+  // Dynamic border color
+  el.style.borderColor = text ? '#94a3b8' : '#e2e8f0';
+});
+
+// Improve autoResize function
+function autoResize(el) {
+  el.style.height = 'auto';
+  const newHeight = Math.min(el.scrollHeight, 120);
+  el.style.height = newHeight + 'px';
+  
+  // Adjust footer padding based on input height
+  const footer = el.closest('footer');
+  footer.style.paddingBottom = newHeight > 50 ? '0.5rem' : '0.75rem';
+}
+
+// Add paste handling for better UX
+messageIn.addEventListener('paste', (e) => {
+  e.preventDefault();
+  const text = e.clipboardData.getData('text/plain');
+  document.execCommand('insertText', false, text);
+});
+
+// Add composition handling for IME input
+messageIn.addEventListener('compositionend', (e) => {
+  autoResize(e.target);
+  updateSendButton();
+});
+
 async function sendMessage() {
   const text = messageIn.value.trim();
   if (!text) return;
