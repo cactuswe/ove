@@ -69,6 +69,7 @@ input, button {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 1rem;
+  z-index: 10;
 }
 
 button {
@@ -191,6 +192,7 @@ footer {
   gap: 0.5rem;
   position: sticky;
   bottom: 0;
+  z-index: 15;
 }
 
 #messageInput {
@@ -201,6 +203,7 @@ footer {
   resize: none;
   max-height: 150px;
   font-family: inherit;
+  z-index: 15;
 }
 
 #sendBtn {
@@ -211,7 +214,7 @@ footer {
 
 /* Ove Peek */
 #ovePeek {
-  position: fixed;
+  position: absolute;
   bottom: 5rem;
   right: 1rem;
   width: 60px;
@@ -220,6 +223,7 @@ footer {
   opacity: 0;
   transform: translateY(100px);
   transition: all 0.3s ease-out;
+  z-index: 1;
 }
 
 #ovePeek.active {
