@@ -4,7 +4,7 @@ import {
   onAuthStateChanged, updateProfile, signOut
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import {
-  getFirestore, doc, setDoc, updateDoc, collection,
+  getFirestore, doc, getDoc, setDoc, updateDoc, collection,
   addDoc, getDocs, query, orderBy, where, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
@@ -171,8 +171,10 @@ onAuthStateChanged(auth, user => {
     presenceUnsub?.();
     presenceUnsub = onSnapshot(presenceRef, snap => {
       const d = snap.exists() ? snap.data() : {};
-      ovePeek.classList.toggle("active", !!d.active);
-      typingIndicator.classList.toggle("hidden", !d.typing);
+      ovePeek?.classList.toggle("active", !!d.active);
+      if (typingIndicator) {
+        typingIndicator.classList.toggle("hidden", !d.typing);
+      }
     });
 
     authUI.classList.add("hidden");
@@ -230,9 +232,16 @@ async function sendMessage() {
   const user = auth.currentUser;
   if (!user) return alert("Du måste vara inloggad!");
   
-  // Check if Ove is active
-  const oveState = (await getDoc(presenceRef)).data();
-  const isOveActive = oveState?.active || /(^|\s)ove\b/i.test(text);
+  // Check if Ove is active or mentioned
+  let isOveActive = false;
+  try {
+    const oveDoc = await getDoc(presenceRef);
+    const oveState = oveDoc.data() || {};
+    isOveActive = oveState.active || /(^|\s)ove\b/i.test(text);
+  } catch (err) {
+    console.error("Failed to check Ove state:", err);
+    isOveActive = /(^|\s)ove\b/i.test(text);
+  }
 
   messageIn.value = "";
   autoResize(messageIn);
