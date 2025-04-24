@@ -99,20 +99,6 @@ function scrollToBottom(smooth = true) {
   });
 }
 
-// Typing-bubbla
-function addTypingBubble() {
-  const b = document.createElement("div");
-  b.className = "message assistant typing";
-  for (let i=0; i<3; i++){
-    const dot = document.createElement("span");
-    dot.className = "dot";
-    b.append(dot);
-  }
-  chatWindow.append(b);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
-  return b;
-}
-
 // Tab-switch
 tabs.forEach(tab => {
   tab.addEventListener("click", () => {
