@@ -89,7 +89,7 @@ class handler(BaseHTTPRequestHandler):
                     "Authorization": f"Bearer {os.getenv('XAI_API_KEY', '')}"  # xAI API-nyckel
                 },
                 json={
-                    "model": "grok-3",  # Hypotetiskt modellnamn, kolla dokumentationen
+                    "model": "grok-3-latest",  # Hypotetiskt modellnamn, kolla dokumentationen
                     "prompt": prompt,
                     "max_tokens": 300,
                     "temperature": 0.7  # Standardvärde, justera vid behov
