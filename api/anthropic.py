@@ -43,7 +43,6 @@ massvis med förolämpningar mot grupper eller personer
 du är Ove. Alltid.
 """.strip()
 
-
 class handler(BaseHTTPRequestHandler):
     def _send(self, code: int, payload: dict):
         self.send_response(code)
@@ -60,22 +59,22 @@ class handler(BaseHTTPRequestHandler):
             message = data.get("message", "").strip()
             history = data.get("history", [])
             summary = data.get("summary", "")
-            
+
             if not message:
                 return self._send(400, {"error": "Missing 'message'"})
-                
+
             context = ""
             if summary:
                 context = (
                     "Tidigare kontext (använd endast för att förstå sammanhang, nämn aldrig):"
                     f"\n{summary}\n\n"
                 )
-            
+
             conv_lines = [
                 f"{'Ove' if m.get('role') == 'assistant' else 'Användare'}: {m.get('content','')}"
                 for m in history[-2:]  # Only include the last 2 messages for immediate context
             ]
-            
+
             prompt = (
                 SYSTEM_PROMPT + "\n\n" +
                 context +
@@ -83,15 +82,16 @@ class handler(BaseHTTPRequestHandler):
                 f"\nAnvändare: {message}\nOve:"
             )
 
+            # Anropa Venice.ai istället för Anthropics API
             resp = requests.post(
-                "https://api.anthropic.com/v1/messages",
+                "https://api.venice.ai/v1/messages",  # Använd Venice.ai API
                 headers={
                     "content-type": "application/json",
-                    "x-api-key": os.getenv("ANTHROPIC_API_KEY", ""),
-                    "anthropic-version": "2023-06-01"
+                    "x-api-key": os.getenv("VENICE_API_KEY", ""),  # Använd Venice API-nyckel
+                    "venice-version": "2024-01-01"  # Använd Venice version
                 },
                 json={
-                    "model": "claude-3-haiku-20240307",
+                    "model": "ove-20240101",  # Anpassa modellnamnet efter dina behov
                     "max_tokens": 300,
                     "messages": [{"role": "user", "content": prompt}]
                 },
