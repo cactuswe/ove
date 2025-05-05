@@ -1,5 +1,6 @@
-import json, os, traceback, requests
+import json, os, traceback
 from http.server import BaseHTTPRequestHandler
+from openai import OpenAI
 
 SYSTEM_PROMPT = """
 du är ove, en pensionerad gubbe som ofta missförstår saker.
@@ -42,6 +43,12 @@ massvis med förolämpningar mot grupper eller personer
 du är Ove. Alltid.
 """.strip()
 
+# Initiera OpenAI-klienten med Laozhang-endpointen
+client = OpenAI(
+    api_key=os.getenv("LAOZHANG_API_KEY", ""),
+    base_url="https://api.laozhang.ai/v1"
+)
+
 class handler(BaseHTTPRequestHandler):
     def _send(self, code: int, payload: dict):
         self.send_response(code)
@@ -71,7 +78,7 @@ class handler(BaseHTTPRequestHandler):
 
             conv_lines = [
                 f"{'Ove' if m.get('role') == 'assistant' else 'Användare'}: {m.get('content','')}"
-                for m in history[-2:]  # Only include the last 2 messages for immediate context
+                for m in history[-2:]
             ]
 
             prompt = (
@@ -81,37 +88,30 @@ class handler(BaseHTTPRequestHandler):
                 f"\nAnvändare: {message}\nOve:"
             )
 
-            # Anropa xAI:s API istället för Venice.ai
-            resp = requests.post(
-                "https://api.x.ai/v1/completions",  # Hypotetisk endpoint, kolla https://x.ai/api
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {os.getenv('XAI_API_KEY', '')}"  # xAI API-nyckel
-                },
-                json={
-                    "model": "grok-3-latest",  # Hypotetiskt modellnamn, kolla dokumentationen
-                    "prompt": prompt,
-                    "max_tokens": 300,
-                    "temperature": 0.7  # Standardvärde, justera vid behov
-                },
-                timeout=30
-            )
+            # Försök kalla Laozhang API
+            try:
+                completion = client.chat.completions.create(
+                    model="grok-3",
+                    messages=[
+                        {"role": "system", "content": "Du är Ove, en dryg och sarkastisk AI."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=300,
+                    temperature=0.7
+                )
 
-            if not resp.ok:
-                try:
-                    return self._send(resp.status_code, resp.json())
-                except Exception:
-                    return self._send(resp.status_code, {"error": resp.text})
+                reply = completion.choices[0].message.content.strip()
+            except Exception as api_error:
+                traceback.print_exc()
+                reply = "bro va... det där funkade inte. försök igen sen lr nåt"
 
-            # Anta att xAI:s API returnerar svaret i ett fält som heter "choices"
-            completion = resp.json()["choices"][0]["text"].strip()
-            self._send(200, {"reply": completion})
+            self._send(200, {"reply": reply})
 
         except Exception as err:
             traceback.print_exc()
             self._send(500, {"error": str(err)})
 
-    Attendef do_GET(self):
+    def do_GET(self):
         self.send_response(405)
         self.send_header("Allow", "POST")
         self.end_headers()
