@@ -1,4 +1,3 @@
-# api/anthropic.py
 import json, os, traceback, requests
 from http.server import BaseHTTPRequestHandler
 
@@ -82,18 +81,18 @@ class handler(BaseHTTPRequestHandler):
                 f"\nAnvändare: {message}\nOve:"
             )
 
-            # Anropa Venice.ai istället för Anthropics API
+            # Anropa xAI:s API istället för Venice.ai
             resp = requests.post(
-                "https://api.venice.ai/v1/messages",  # Använd Venice.ai API
+                "https://api.x.ai/v1/completions",  # Hypotetisk endpoint, kolla https://x.ai/api
                 headers={
-                    "content-type": "application/json",
-                    "x-api-key": os.getenv("VENICE_API_KEY", ""),  # Använd Venice API-nyckel
-                    "venice-version": "2024-01-01"  # Använd Venice version
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {os.getenv('XAI_API_KEY', '')}"  # xAI API-nyckel
                 },
                 json={
-                    "model": "ove-20240101",  # Anpassa modellnamnet efter dina behov
+                    "model": "grok-3",  # Hypotetiskt modellnamn, kolla dokumentationen
+                    "prompt": prompt,
                     "max_tokens": 300,
-                    "messages": [{"role": "user", "content": prompt}]
+                    "temperature": 0.7  # Standardvärde, justera vid behov
                 },
                 timeout=30
             )
@@ -104,14 +103,15 @@ class handler(BaseHTTPRequestHandler):
                 except Exception:
                     return self._send(resp.status_code, {"error": resp.text})
 
-            completion = resp.json()["content"][0]["text"].strip()
+            # Anta att xAI:s API returnerar svaret i ett fält som heter "choices"
+            completion = resp.json()["choices"][0]["text"].strip()
             self._send(200, {"reply": completion})
 
         except Exception as err:
             traceback.print_exc()
             self._send(500, {"error": str(err)})
 
-    def do_GET(self):
+    Attendef do_GET(self):
         self.send_response(405)
         self.send_header("Allow", "POST")
         self.end_headers()
